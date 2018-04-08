@@ -5,8 +5,7 @@
 #include <cstring>
 #include <windows.h>
 #include <vector>
-
-char* StringToSearch;
+#include <ctype.h>
 
 struct FileData
 {
@@ -15,7 +14,22 @@ struct FileData
 	unsigned Size;
 };
 
+char* SearchTerm;
 std::vector<FileData> Files;
+std::vector<std::string> FilesSugested;
+
+
+char* ToLower(char* str)
+{
+	char* result = str;
+	if (!str) return str;
+	while (*str)
+	{
+		*str = tolower(*str);
+		*str++;
+	}
+	return result;
+}
 
 void GetAllFilesInDir()
 {
@@ -36,11 +50,44 @@ void GetAllFilesInDir()
 		}
 		else
 		{
-			GetCurrentDirectoryA(MAX_PATH, FullFileName);
-			strcat_s(FullFileName, "\\");
-			strcat_s(FullFileName, CurrentFileData.cFileName);
-			
-			Files.push_back({ CurrentFileData.cFileName, FullFileName, CurrentFileData.nFileSizeLow});
+			bool ShouldProcess = true;
+			if (FilesSugested.size()) ShouldProcess = false;
+
+			for (std::string& FileSugested : FilesSugested)
+			{
+				char TempSugestedName[128];
+				char TempFileName[128];
+				strcpy_s(TempSugestedName, FileSugested.c_str());
+				strcpy_s(TempFileName, CurrentFileData.cFileName);
+
+				char* LoweredTempSug = ToLower(TempSugestedName);
+				char* LoweredTempFile = ToLower(TempFileName);
+				//Handle wild card
+				if (strstr(TempSugestedName, "*.") == TempSugestedName)
+				{
+					if (strstr(LoweredTempFile, LoweredTempSug + 1))
+					{
+						ShouldProcess = true;
+						break;
+					}
+				}
+				else
+				{
+					if (strstr(LoweredTempFile, LoweredTempSug) && (strlen(LoweredTempFile) == strlen(LoweredTempSug)))
+					{
+						ShouldProcess = true;
+						break;
+					}
+				}
+			}
+			if (ShouldProcess)
+			{
+				GetCurrentDirectoryA(MAX_PATH, FullFileName);
+				strcat_s(FullFileName, "\\");
+				strcat_s(FullFileName, CurrentFileData.cFileName);
+
+				Files.push_back({ CurrentFileData.cFileName, FullFileName, CurrentFileData.nFileSizeLow });
+			}
 		}
 	}
 	SetCurrentDirectory("..");
@@ -73,7 +120,7 @@ void SearchFiles()
 				
 				char temp[512];
 				strncpy_s(temp, LineStart, LineEnd - LineStart);
-				if (char* BeginOfSearchString = strstr(temp, StringToSearch))
+				if (char* BeginOfSearchString = strstr(temp, SearchTerm))
 				{
 					HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 					CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
@@ -84,7 +131,7 @@ void SearchFiles()
 					strncpy_s(lineToString, temp, BeginOfSearchString - temp);
 					char lineFromString[256];
 
-					int SearchLen = strlen(StringToSearch);
+					int SearchLen = strlen(SearchTerm);
 					char* EndOfSearch = BeginOfSearchString + SearchLen;
 
 					strcpy_s(lineFromString, EndOfSearch);
@@ -93,7 +140,7 @@ void SearchFiles()
 					printf("%s", lineToString);
 					SetConsoleTextAttribute(hConsole, FOREGROUND_BLUE | FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN);
 
-					printf("%s", StringToSearch);
+					printf("%s", SearchTerm);
 
 					SetConsoleTextAttribute(hConsole, currentColor);
 					
@@ -112,14 +159,26 @@ void SearchFiles()
 
 int main(int argc, char* argv[])
 {
-	//if (argc < 2) return 1;
+	
 #ifdef _DEBUG
-	StringToSearch = "ShadyApp";
+	SearchTerm = "ShadyApp";
 	SetCurrentDirectoryA("C:\\Users\\ALIN");
 #else
-	StringToSearch = argv[1];
+	SearchTerm = argv[1];
+	if (argc < 2) return 1;
+
 #endif
 	
+	if (argc > 2)
+	{
+		//Files or wildcards supplied
+		for (int i = 2; i < argc; i++)
+		{
+			FilesSugested.push_back(argv[i]);
+		}
+	}
+
+
 	GetAllFilesInDir();
 
 	SearchFiles();
