@@ -92,7 +92,7 @@ void parseProject()
 		else
 		{
 			// TODO these count files as parsed before entering the parse function
-			//wich may fail..
+			//which may fail..
 
 			LARGE_INTEGER size = {};
 			size.LowPart = findData.nFileSizeLow;
