@@ -1,12 +1,10 @@
 // PngReader.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
+
 #include <cstdint>
 #include <cstdio>
-
-
-
+#include "PngDecoder.h"
 
 
 bool IsValidChunk(char* Data);

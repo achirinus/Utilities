@@ -4,4 +4,7 @@
     <LocalDebuggerCommandArguments>"C:\Users\ALIN\Desktop\TestIcon.png"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
+  <PropertyGroup>
+    <ShowAllFiles>true</ShowAllFiles>
+  </PropertyGroup>
 </Project>

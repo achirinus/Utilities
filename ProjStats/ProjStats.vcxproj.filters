@@ -15,30 +15,30 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Main.cpp">
+    <ClCompile Include="src\Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Utils.cpp">
+    <ClCompile Include="src\Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Utils.h">
+    <ClInclude Include="src\AppState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ProjectInfo.h">
+    <ClInclude Include="src\ExcludedFiles.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ExcludedFiles.h">
+    <ClInclude Include="src\Option.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Timer.h">
+    <ClInclude Include="src\Timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Option.h">
+    <ClInclude Include="src\ProjectInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AppState.h">
+    <ClInclude Include="src\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

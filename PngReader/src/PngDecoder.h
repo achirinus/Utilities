@@ -1,6 +1,8 @@
-#include "PngDecoder.h"
+#pragma once
 
-char PngHeader[] = { (char)0x89, (char)0x50, (char)0x4E, (char)0x47, (char)0x0D, (char)0x0A, (char)0x1A, (char)0x0A };
+#include <cstdint>
+
+extern char PngHeader[];
 
 #define PNG_HEADER_SIZE 8
 
@@ -54,11 +56,22 @@ struct FileContent
 	char* Data;
 };
 
-PngDecoder::PngDecoder()
+struct PngInfo
 {
-}
+	int32_t Width;
+	int32_t Height;
+	int8_t BitDepth; // Per channel, not pixel
+	int8_t ColorType;
+	int8_t CompressionMethod;
+	int8_t FilterMethod;
+	int8_t InterlaceMethod;
+	bool IsSRGB;
+};
 
-
-PngDecoder::~PngDecoder()
+class PngDecoder
 {
-}
+public:
+	PngDecoder();
+	~PngDecoder();
+};
+
