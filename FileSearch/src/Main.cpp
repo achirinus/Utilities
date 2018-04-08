@@ -73,9 +73,31 @@ void SearchFiles()
 				
 				char temp[512];
 				strncpy_s(temp, LineStart, LineEnd - LineStart);
-				if (strstr(temp, StringToSearch))
+				if (char* BeginOfSearchString = strstr(temp, StringToSearch))
 				{
-					printf("%s(%d): %s\n", names.ShortName.c_str(), LineNumber, temp);
+					HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+					CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+					GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+					WORD currentColor = consoleInfo.wAttributes;
+
+					char lineToString[256];
+					strncpy_s(lineToString, temp, BeginOfSearchString - temp);
+					char lineFromString[256];
+
+					int SearchLen = strlen(StringToSearch);
+					char* EndOfSearch = BeginOfSearchString + SearchLen;
+
+					strcpy_s(lineFromString, EndOfSearch);
+
+					printf("%s(%d): ", names.ShortName.c_str(), LineNumber);
+					printf("%s", lineToString);
+					SetConsoleTextAttribute(hConsole, FOREGROUND_BLUE | FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN);
+
+					printf("%s", StringToSearch);
+
+					SetConsoleTextAttribute(hConsole, currentColor);
+					
+					printf("%s\n", lineFromString);
 				}
 				LineNumber++;
 				LineStart = TempCont + 1;
