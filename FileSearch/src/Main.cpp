@@ -1,36 +1,44 @@
 #undef UNICODE
 #undef _UNICODE
 
-#include <cstdio>
-#include <cstring>
-#include <windows.h>
-#include <vector>
-#include <ctype.h>
 
-#define OUTPUT_LINE_LENGTH 100
-
-struct FileData
-{
-	std::string ShortName;
-	std::string FullName;
-	unsigned Size;
-};
+#include "Main.h"
 
 char* SearchTerm;
+int OutputLineLength = 100;
+
 std::vector<FileData> Files;
-std::vector<std::string> FilesSugested;
+std::vector<std::string> FilesIncluded;
+std::vector<std::string> FilesExcluded;
+std::string CommandLine;
 
-
-char* ToLower(char* str)
+int main(int argc, char* argv[])
 {
-	char* result = str;
-	if (!str) return str;
-	while (*str)
-	{
-		*str = tolower(*str);
-		*str++;
-	}
-	return result;
+	
+#ifdef _DEBUG
+	SearchTerm = "unsigned char*>(&value)), static";
+	SetCurrentDirectoryA("D:\\workspace\\InstantWar\\AndroidUpdate4");
+#else
+	SearchTerm = argv[1];
+	if (argc < 2) return 1;
+
+#endif
+	CommandLine = GetCommandLine();
+	
+	ParseOptions(argc, argv);
+	
+
+	BeginCounter();
+
+	GetAllFilesInDir();
+
+	int GetFilesTime = EndCounter();
+
+	printf("GetAllFilesInDir time: %dms", GetFilesTime);
+
+	SearchFiles();
+
+	return 0;
 }
 
 void GetAllFilesInDir()
@@ -53,9 +61,9 @@ void GetAllFilesInDir()
 		else
 		{
 			bool ShouldProcess = true;
-			if (FilesSugested.size()) ShouldProcess = false;
+			if (FilesIncluded.size()) ShouldProcess = false;
 
-			for (std::string& FileSugested : FilesSugested)
+			for (std::string& FileSugested : FilesIncluded)
 			{
 				char TempSugestedName[1024];
 				char TempFileName[1024];
@@ -120,18 +128,18 @@ void SearchFiles()
 			if (*TempCont == '\n')
 			{
 				LineEnd = TempCont;
-				
-				char temp[OUTPUT_LINE_LENGTH + 1];
+
+				char temp[MAX_LINE_BUFFER_LENGTH + 1];
 				int count = LineEnd - LineStart;
 
-				if (count <= OUTPUT_LINE_LENGTH)
+				if (count <= OutputLineLength)
 				{
 					strncpy_s(temp, LineStart, count);
 				}
 				else
 				{
 					//TODO this is not safe, those numbers can be <=0
-					int AvailableCharCount = OUTPUT_LINE_LENGTH - SearchTermSize - 7;
+					int AvailableCharCount = OutputLineLength - SearchTermSize - 7;
 					int NumberOfSideChars = AvailableCharCount / 2;
 					char* BeginOfSearchString = strstr(LineStart, SearchTerm);
 					if (BeginOfSearchString && (BeginOfSearchString < LineEnd))
@@ -188,9 +196,9 @@ void SearchFiles()
 					GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
 					WORD currentColor = consoleInfo.wAttributes;
 
-					char lineToString[OUTPUT_LINE_LENGTH];
+					char lineToString[MAX_LINE_BUFFER_LENGTH];
 					strncpy_s(lineToString, temp, BeginOfSearchString - temp);
-					char lineFromString[OUTPUT_LINE_LENGTH];
+					char lineFromString[MAX_LINE_BUFFER_LENGTH];
 
 					int SearchLen = strlen(SearchTerm);
 					char* EndOfSearch = BeginOfSearchString + SearchLen;
@@ -204,7 +212,7 @@ void SearchFiles()
 					printf("%s", SearchTerm);
 
 					SetConsoleTextAttribute(hConsole, currentColor);
-					
+
 					printf("%s\n", lineFromString);
 				}
 				LineNumber++;
@@ -218,31 +226,25 @@ void SearchFiles()
 	}
 }
 
-int main(int argc, char* argv[])
+
+void ParseOptions(int num, char* args[])
 {
 	
-#ifdef _DEBUG
-	SearchTerm = "unsigned char*>(&value)), static";
-	SetCurrentDirectoryA("D:\\workspace\\InstantWar\\AndroidUpdate4");
-#else
-	SearchTerm = argv[1];
-	if (argc < 2) return 1;
-
-#endif
-	
-	if (argc > 2)
+	for (int i = 1; i < num; i++)
 	{
-		//Files or wildcards supplied
-		for (int i = 2; i < argc; i++)
+		if (BeginsWith(args[i], "-s"))
 		{
-			FilesSugested.push_back(argv[i]);
+			SearchTerm = args[i] + 2;
 		}
+		else if (BeginsWith(args[i], "-i"))
+		{
+			FilesIncluded.push_back(args[i] + 2);
+		}
+		else
+		{
+			printf("Ignoring unknown argument %s.", args[i]);
+		}
+		
 	}
-
-
-	GetAllFilesInDir();
-
-	SearchFiles();
-
-	return 0;
 }
+
