@@ -7,6 +7,8 @@
 #include <vector>
 #include <ctype.h>
 
+#define OUTPUT_LINE_LENGTH 100
+
 struct FileData
 {
 	std::string ShortName;
@@ -55,8 +57,8 @@ void GetAllFilesInDir()
 
 			for (std::string& FileSugested : FilesSugested)
 			{
-				char TempSugestedName[128];
-				char TempFileName[128];
+				char TempSugestedName[1024];
+				char TempFileName[1024];
 				strcpy_s(TempSugestedName, FileSugested.c_str());
 				strcpy_s(TempFileName, CurrentFileData.cFileName);
 
@@ -108,6 +110,7 @@ void SearchFiles()
 		fread(Contents, 1, names.Size, pFile);
 
 		int LineNumber = 1;
+		int SearchTermSize = strlen(SearchTerm);
 
 		char* LineStart = Contents;
 		char* LineEnd = 0;
@@ -118,8 +121,66 @@ void SearchFiles()
 			{
 				LineEnd = TempCont;
 				
-				char temp[512];
-				strncpy_s(temp, LineStart, LineEnd - LineStart);
+				char temp[OUTPUT_LINE_LENGTH + 1];
+				int count = LineEnd - LineStart;
+
+				if (count <= OUTPUT_LINE_LENGTH)
+				{
+					strncpy_s(temp, LineStart, count);
+				}
+				else
+				{
+					//TODO this is not safe, those numbers can be <=0
+					int AvailableCharCount = OUTPUT_LINE_LENGTH - SearchTermSize - 7;
+					int NumberOfSideChars = AvailableCharCount / 2;
+					char* BeginOfSearchString = strstr(LineStart, SearchTerm);
+					if (BeginOfSearchString && (BeginOfSearchString < LineEnd))
+					{
+						int NumOfCharsBeforeTerm = BeginOfSearchString - LineStart;
+						int NumOfCharsAfterTerm = LineEnd - BeginOfSearchString;
+
+						bool PreDotsRequired = false;
+						bool PostDotsRequired = false;
+
+						if (NumOfCharsBeforeTerm > NumberOfSideChars)
+						{
+							PreDotsRequired = true;
+							NumOfCharsBeforeTerm = NumberOfSideChars;
+						}
+						if (NumOfCharsAfterTerm > NumberOfSideChars)
+						{
+							PostDotsRequired = true;
+							NumOfCharsAfterTerm = NumberOfSideChars;
+						}
+						std::string tempStr;
+
+						if (PreDotsRequired)
+						{
+							tempStr += "...";
+						}
+						char* StartOfPre = BeginOfSearchString - NumOfCharsBeforeTerm;
+						for (int i = 0; i < NumOfCharsBeforeTerm; i++)
+						{
+							tempStr += StartOfPre[i];
+						}
+
+						tempStr += SearchTerm;
+
+						char* StartOfAfter = BeginOfSearchString + SearchTermSize;
+						for (int i = 0; i < NumOfCharsAfterTerm; i++)
+						{
+							tempStr += StartOfAfter[i];
+						}
+
+						if (PostDotsRequired)
+						{
+							tempStr += "...";
+						}
+
+						strncpy_s(temp, tempStr.c_str(), tempStr.size() + 1);
+					}
+				}
+
 				if (char* BeginOfSearchString = strstr(temp, SearchTerm))
 				{
 					HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -127,9 +188,9 @@ void SearchFiles()
 					GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
 					WORD currentColor = consoleInfo.wAttributes;
 
-					char lineToString[256];
+					char lineToString[OUTPUT_LINE_LENGTH];
 					strncpy_s(lineToString, temp, BeginOfSearchString - temp);
-					char lineFromString[256];
+					char lineFromString[OUTPUT_LINE_LENGTH];
 
 					int SearchLen = strlen(SearchTerm);
 					char* EndOfSearch = BeginOfSearchString + SearchLen;
@@ -138,7 +199,7 @@ void SearchFiles()
 
 					printf("%s(%d): ", names.ShortName.c_str(), LineNumber);
 					printf("%s", lineToString);
-					SetConsoleTextAttribute(hConsole, FOREGROUND_BLUE | FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN);
+					SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
 
 					printf("%s", SearchTerm);
 
@@ -161,8 +222,8 @@ int main(int argc, char* argv[])
 {
 	
 #ifdef _DEBUG
-	SearchTerm = "ShadyApp";
-	SetCurrentDirectoryA("C:\\Users\\ALIN");
+	SearchTerm = "unsigned char*>(&value)), static";
+	SetCurrentDirectoryA("D:\\workspace\\InstantWar\\AndroidUpdate4");
 #else
 	SearchTerm = argv[1];
 	if (argc < 2) return 1;
