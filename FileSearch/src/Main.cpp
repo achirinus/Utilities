@@ -1,16 +1,13 @@
-#undef UNICODE
-#undef _UNICODE
-
 
 #include "Main.h"
 
-char* SearchTerm;
+const char* SearchTerm;
 int OutputLineLength = 100;
 
 std::vector<FileData> Files;
 std::vector<std::string> FilesIncluded;
 std::vector<std::string> FilesExcluded;
-std::string CommandLine;
+char* CommandLine;
 
 int main(int argc, char* argv[])
 {
@@ -19,15 +16,16 @@ int main(int argc, char* argv[])
 	SearchTerm = "unsigned char*>(&value)), static";
 	SetCurrentDirectoryA("D:\\workspace\\InstantWar\\AndroidUpdate4");
 #else
-	SearchTerm = argv[1];
 	if (argc < 2) return 1;
 
 #endif
 	CommandLine = GetCommandLine();
 	
-	ParseOptions(argc, argv);
+	OptionBuffer optionBuffer = ParseCommandLine(CommandLine);
 	
-
+	ParseOptions(optionBuffer);
+	
+	
 	BeginCounter();
 
 	GetAllFilesInDir();
@@ -227,24 +225,72 @@ void SearchFiles()
 }
 
 
-void ParseOptions(int num, char* args[])
+void ParseOptions(OptionBuffer optBuffer)
 {
-	
-	for (int i = 1; i < num; i++)
+	for (int i = 0; i < optBuffer.Size; i++)
 	{
-		if (BeginsWith(args[i], "-s"))
+		ProgramOption option = optBuffer.Buffer[i];
+		switch (option.Name)
 		{
-			SearchTerm = args[i] + 2;
+			case 's':
+			{
+				//TODO this needs to be parsed now
+				SearchTerm = option.Args; 
+			}break;
+
+			case 'i':
+			{
+				//TODO this needs to be parsed now
+				FilesIncluded.push_back(option.Args);
+			}break;
+
+			default:
+			{
+				printf("Ignoring unknown argument %c.", option.Name);
+			}break;
 		}
-		else if (BeginsWith(args[i], "-i"))
+	}
+}
+
+OptionBuffer ParseCommandLine(char* line)
+{
+	OptionBuffer result = { };
+	result.Buffer = new ProgramOption[SUPPORTED_OPTIONS];
+
+	int optPos = FindString(line, " -");
+	while (optPos != -1)
+	{
+		ProgramOption opt = {};
+		opt.Name = line[optPos + 2];
+
+		//See if there is an open bracket or quote before searching the next arg
+		char* somethingToClose = 0;
+		int argPos = optPos + 3;
+
+		if (line[argPos] == '[') somethingToClose = "]";
+		if (line[argPos] == '\"') somethingToClose = "\"";
+
+		int somethingToClosePos = -1;
+
+		if (somethingToClose)
 		{
-			FilesIncluded.push_back(args[i] + 2);
+			somethingToClosePos = FindString(line, somethingToClose, argPos + 1);
+			if (somethingToClosePos == -1)
+			{
+				TerminateError("No matching %s found for option [%c]", somethingToClose, opt.Name);
+			}
+			optPos = FindString(line, " -", somethingToClosePos);
+			opt.Args = Substring(line, argPos);
 		}
 		else
 		{
-			printf("Ignoring unknown argument %s.", args[i]);
+			optPos = FindString(line, " -");
+			opt.Args = Substring(line, argPos, optPos - argPos);
 		}
 		
+		
+		result.Buffer[result.Size++] = opt;
 	}
+	return result;
 }
 

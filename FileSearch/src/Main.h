@@ -7,6 +7,7 @@
 
 
 #define MAX_LINE_BUFFER_LENGTH 512
+#define SUPPORTED_OPTIONS 20 //Just make sure this is way bigger than number of options
 
 const char* HelpText =
 "Usage: FileSearch -s\"[search_string]\" <options> \n"
@@ -23,6 +24,18 @@ struct FileData
 	unsigned Size;
 };
 
+
+struct ProgramOption
+{
+	char Name;
+	char* Args;
+};
+
+struct OptionBuffer
+{
+	ProgramOption* Buffer;
+	int Size;
+};
 
 char* ToLower(char* str)
 {
@@ -67,6 +80,82 @@ bool BeginsWith(const char* str, const char* with)
 	return strstr(str, with) == str;
 }
 
+void TerminateError(char* mes, ...)
+{
+	va_list args;
+	va_start(args, mes);
+
+	vprintf(mes, args);
+	
+	va_end(args);
+	exit(1);
+}
+
+void ClearOptionBuffer(OptionBuffer* buf)
+{
+	if (buf && buf->Buffer)
+	{
+		delete[] buf->Buffer;
+	}
+}
+
+char* Substring(char* source, int startPos = 0, int count = 0)
+{
+	char* result = 0;
+	int sourceLen = strlen(source);
+	if ((startPos < 0) || count < 0) return result;
+	if (count == 0) count = sourceLen - startPos;
+	if (sourceLen < (startPos + count)) count = sourceLen - startPos;
+	
+	result = new char[count + 1];
+	int i = 0;
+	for (; i < count; i++)
+	{
+		result[i] = source[startPos++];
+	}
+	result[i] = 0;
+	return result;
+}
+
+int FindString(const char* source, const char* strToFind, int startIndex = 0)
+{
+	int result = -1;
+	if (!source || !strToFind) return result;
+
+	int index = startIndex;
+	source += startIndex;
+	char temp = *source;
+	while (temp)
+	{
+		if (temp == *strToFind)
+		{
+			const char* tempFind = strToFind;
+			bool found = false;
+			result = index;
+			char c = *tempFind++;
+			
+			while (c)
+			{
+				if (c != *source)
+				{
+					result = -1;
+					found = false;
+					break;
+				}
+				source++;
+				c = *tempFind++;
+				found = true;
+			}
+			if (found) break;
+		}
+		source++;
+		temp = *source;
+		index++;
+	}
+	return result;
+}
+
 void GetAllFilesInDir();
 void SearchFiles();
-void ParseOptions(int num, char* args[]);
+OptionBuffer ParseCommandLine(char* line);
+void ParseOptions(OptionBuffer optionbuffer);
