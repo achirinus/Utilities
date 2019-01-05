@@ -3,6 +3,7 @@
 
 const char* SearchTerm;
 int OutputLineLength = 100;
+char StartingWorkingDir[MAX_PATH];
 
 std::vector<FileData> Files;
 std::vector<std::string> FilesIncluded;
@@ -14,15 +15,18 @@ int main(int argc, char* argv[])
 	
 #ifdef _DEBUG
 	SearchTerm = "unsigned char*>(&value)), static";
-	SetCurrentDirectoryA("D:\\workspace\\InstantWar\\AndroidUpdate4");
+	strcpy(StartingWorkingDir, "D:\\workspace\\InstantWar\\AndroidUpdate4");
+	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
 
 #endif
+	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
+
 	CommandLine = GetCommandLine();
 	
 	OptionBuffer optionBuffer = ParseCommandLine(CommandLine);
-	
+
 	ParseOptions(optionBuffer);
 	
 	
@@ -108,7 +112,7 @@ void SearchFiles()
 	for (FileData& names : Files)
 	{
 		FILE* pFile = 0;
-		fopen_s(&pFile, names.FullName.c_str(), "r");
+		fopen_s(&pFile, names.AbsPath, "r");
 		if (pFile == nullptr) continue;
 		if (names.Size == 0) continue;
 		char* Contents = new char[names.Size];
@@ -203,7 +207,9 @@ void SearchFiles()
 
 					strcpy_s(lineFromString, EndOfSearch);
 
-					printf("%s(%d): ", names.ShortName.c_str(), LineNumber);
+					char* relativeFilePath = GetRelativePath(StartingWorkingDir, names.AbsPath);
+
+					printf("%s(%d): ", relativeFilePath, LineNumber);
 					printf("%s", lineToString);
 					SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
 
