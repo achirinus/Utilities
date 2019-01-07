@@ -19,8 +19,8 @@ const char* HelpText =
 
 struct FileData
 {
-	std::string ShortName;
-	std::string FullName;
+	char* FileName;
+	char* AbsPath;
 	unsigned Size;
 };
 
@@ -155,7 +155,52 @@ int FindString(const char* source, const char* strToFind, int startIndex = 0)
 	return result;
 }
 
+char* GetRelativePath(const char* cwd, const char* absPath)
+{
+	if (!cwd || !absPath) return 0;
+
+	char slash = 0;
+
+	if (FindString(cwd, "/") != -1)
+	{
+		slash = '/';
+	}
+	else
+	{
+		slash = '\\';
+	}
+
+	int absPathSize = strlen(absPath);
+	int cwdPathSize = strlen(cwd);
+
+	char* result = new char[absPathSize + 1];
+	int startingIndex = 0;
+	for (; startingIndex < absPathSize; startingIndex++)
+	{
+		if (absPath[startingIndex] != cwd[startingIndex]) break;
+	}
+
+	if (startingIndex != cwdPathSize)
+	{
+		return 0;
+	}
+
+	if (absPath[startingIndex] != slash)
+	{
+		result[0] = slash;
+		strcpy(result + 1, absPath + startingIndex);
+	}
+	else
+	{
+		strcpy(result, absPath + startingIndex);
+	}
+	return result;
+}
+
 void GetAllFilesInDir();
 void SearchFiles();
 OptionBuffer ParseCommandLine(char* line);
 void ParseOptions(OptionBuffer optionbuffer);
+
+//    C://d/abc
+//	  C://d
