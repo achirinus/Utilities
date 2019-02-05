@@ -11,7 +11,7 @@
 
 const char* HelpText =
 "Usage: FileSearch -s\"[search_string]\" <options> \n"
-"Use [] only to specify multiple arguments to an option\n"
+"Use [arg,arg,..] only to specify multiple arguments to an option\n"
 "Options: \n"
 "-t[NUM]	NUM=number of threads to use(default = max possible)\n"
 "-e[FILE_NAME] FILE_NAME=name of the file/folder to exclude\n"
@@ -24,11 +24,16 @@ struct FileData
 	unsigned Size;
 };
 
+struct StringBuffer
+{
+	char* Strings[50];
+	int Size;
+};
 
 struct ProgramOption
 {
 	char Name;
-	char* Args;
+	StringBuffer Args;
 };
 
 struct OptionBuffer
@@ -104,7 +109,7 @@ char* Substring(char* source, int startPos = 0, int count = 0)
 	char* result = 0;
 	int sourceLen = strlen(source);
 	if ((startPos < 0) || count < 0) return result;
-	if (count == 0) count = sourceLen - startPos;
+	//if (count == 0) count = sourceLen - startPos;
 	if (sourceLen < (startPos + count)) count = sourceLen - startPos;
 	
 	result = new char[count + 1];
@@ -114,6 +119,49 @@ char* Substring(char* source, int startPos = 0, int count = 0)
 		result[i] = source[startPos++];
 	}
 	result[i] = 0;
+	return result;
+}
+
+int StringSize(const char* str)
+{
+	if (!str) return 0;
+	int result = 0;
+	while (*str++) result++;
+	return result;
+}
+
+int StringCopy(const char* from, char* dest)
+{
+	int result = 0;
+	if (!dest || !from) return result;
+	char c = *from;
+	while (*from)
+	{
+		*dest++ = *from++;
+		result++;
+	}
+	return result;
+}
+
+char* StringConcat(const char* first, const char* second, char* dest = 0)
+{
+	char* result = 0;
+	int firstSize = StringSize(first);
+	int secondSize = StringSize(second);
+
+	if (!first && !second) return 0;
+	if (!dest)
+	{
+
+		result = new char[firstSize + secondSize + 1];
+	}
+	else
+	{
+		result = dest;
+	}
+
+	
+
 	return result;
 }
 
@@ -193,6 +241,79 @@ char* GetRelativePath(const char* cwd, const char* absPath)
 	else
 	{
 		strcpy(result, absPath + startingIndex);
+	}
+	return result;
+}
+
+
+//Can work for any type of character, but the first occurence of the char must be in the string
+//The type of character is specified by the open and close args
+//The canStack param specifies if another pair of chars can be found inside a pair
+char* FindMatchingClosingChar(char* str, char open, char close, bool canStack = false)
+{
+	if (!str) return 0;
+	int openNum = 0;
+	int closeNum = 0;
+
+	while (*str)
+	{
+		if (canStack)
+		{
+			if (*str == open)
+			{
+				openNum++;
+			}
+			if (*str == close)
+			{
+				closeNum++;
+				if (closeNum == openNum)
+				{
+					return str;
+				}
+				else if (closeNum > openNum)
+				{
+					//TODO(Alin): Maybe error here
+					return 0;
+				}
+			}
+		}
+		else
+		{
+			if ((*str == close) && (openNum))
+			{
+				return str;
+			}
+			if (*str == open)
+			{
+				openNum = 1;
+			}
+		}
+		str++;
+	}
+	return 0;
+}
+
+StringBuffer BreakStringByToken(char* str, char token)
+{
+	StringBuffer result = {};
+	if (!str) return result;
+	char* tempStr = str;
+	int lastTokenIndex = -1;
+	int index = 0;
+	while (tempStr[index])
+	{
+		char At = tempStr[index];
+		if (At == token)
+		{
+			if (lastTokenIndex != -1)
+			{
+				int count = index - lastTokenIndex - 1;
+
+				result.Strings[result.Size++] = Substring(tempStr, lastTokenIndex + 1, count);
+			}
+			lastTokenIndex = index;
+		}
+		index++;
 	}
 	return result;
 }

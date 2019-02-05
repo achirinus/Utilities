@@ -21,6 +21,9 @@ int main(int argc, char* argv[])
 	if (argc < 2) return 1;
 
 #endif
+
+	StringBuffer testBuffer = BreakStringByToken(",am,o,randunica,", ',');
+
 	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
 
 	CommandLine = GetCommandLine();
@@ -85,7 +88,7 @@ void GetAllFilesInDir()
 				}
 				else
 				{
-					if (strstr(LoweredTempFile, LoweredTempSug) && (strlen(LoweredTempFile) == strlen(LoweredTempSug)))
+					if (strstr(LoweredTempFile, LoweredTempSug) && (StringSize(LoweredTempFile) == StringSize(LoweredTempSug)))
 					{
 						ShouldProcess = true;
 						break;
@@ -120,8 +123,7 @@ void SearchFiles()
 		fread(Contents, 1, names.Size, pFile);
 
 		int LineNumber = 1;
-		int SearchTermSize = strlen(SearchTerm);
-
+		int SearchTermSize = StringSize(SearchTerm);
 		char* LineStart = Contents;
 		char* LineEnd = 0;
 
@@ -202,7 +204,7 @@ void SearchFiles()
 					strncpy_s(lineToString, temp, BeginOfSearchString - temp);
 					char lineFromString[MAX_LINE_BUFFER_LENGTH];
 
-					int SearchLen = strlen(SearchTerm);
+					int SearchLen = StringSize(SearchTerm);
 					char* EndOfSearch = BeginOfSearchString + SearchLen;
 
 					strcpy_s(lineFromString, EndOfSearch);
@@ -241,13 +243,13 @@ void ParseOptions(OptionBuffer optBuffer)
 			case 's':
 			{
 				//TODO this needs to be parsed now
-				SearchTerm = option.Args; 
+				SearchTerm = option.Args.Strings[0]; 
 			}break;
 
 			case 'i':
 			{
 				//TODO this needs to be parsed now
-				FilesIncluded.push_back(option.Args);
+				//FilesIncluded.push_back(option.Args);
 			}break;
 
 			default:
@@ -274,8 +276,7 @@ OptionBuffer ParseCommandLine(char* line)
 		int argPos = optPos + 3;
 
 		if (line[argPos] == '[') somethingToClose = "]";
-		if (line[argPos] == '\"') somethingToClose = "\"";
-
+		
 		int somethingToClosePos = -1;
 
 		if (somethingToClose)
@@ -286,12 +287,16 @@ OptionBuffer ParseCommandLine(char* line)
 				TerminateError("No matching %s found for option [%c]", somethingToClose, opt.Name);
 			}
 			optPos = FindString(line, " -", somethingToClosePos);
-			opt.Args = Substring(line, argPos);
+			StringBuffer temp = {};
+			temp.Strings[temp.Size++] = Substring(line, argPos);
+			opt.Args = temp;
 		}
 		else
 		{
 			optPos = FindString(line, " -");
-			opt.Args = Substring(line, argPos, optPos - argPos);
+			StringBuffer temp = {};
+			temp.Strings[temp.Size++] = Substring(line, argPos, optPos - argPos);
+			opt.Args = temp;
 		}
 		
 		
