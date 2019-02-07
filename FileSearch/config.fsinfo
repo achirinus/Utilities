@@ -1,0 +1,2 @@
+exclude=*.h,abc.txt,yellow.txt
+threads=2

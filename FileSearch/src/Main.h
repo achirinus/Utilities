@@ -4,6 +4,7 @@
 #include <cstring>
 #include <vector>
 #include <ctype.h>
+#include <cstdio>
 
 
 #define MAX_LINE_BUFFER_LENGTH 512
@@ -16,6 +17,8 @@ const char* HelpText =
 "-t[NUM]	NUM=number of threads to use(default = max possible)\n"
 "-e[FILE_NAME] FILE_NAME=name of the file/folder to exclude\n"
 "-i[FILE_NAME] FILE_NAME=name of the file/folder to include(will exclude everything else)\n";
+
+
 
 struct FileData
 {
@@ -40,6 +43,15 @@ struct OptionBuffer
 {
 	ProgramOption* Buffer;
 	int Size;
+};
+
+struct ProgramSettings
+{
+	char* SearchTerm;
+	StringBuffer filesToInclude;
+	StringBuffer filesToExclude;
+	int numberOfThreads;
+
 };
 
 char* ToLower(char* str)
@@ -143,6 +155,18 @@ int StringCopy(const char* from, char* dest)
 	return result;
 }
 
+char* StringCopy(const char* from)
+{
+	char* result = 0;
+	if (!from) return result;
+	int size = StringSize(from);
+	if (!size) return result;
+	char* dest = new char[size];
+	result = dest;
+	while (*dest++ = *from++);
+	return result;
+}
+
 char* StringConcat(const char* first, const char* second, char* dest = 0)
 {
 	char* result = 0;
@@ -152,7 +176,6 @@ char* StringConcat(const char* first, const char* second, char* dest = 0)
 	if (!first && !second) return 0;
 	if (!dest)
 	{
-
 		result = new char[firstSize + secondSize + 1];
 	}
 	else
@@ -160,8 +183,12 @@ char* StringConcat(const char* first, const char* second, char* dest = 0)
 		result = dest;
 	}
 
-	
-
+	char* tempResult = result;
+	int copied = StringCopy(first, tempResult);
+	tempResult += copied;
+	int secondCopied = StringCopy(second, tempResult);
+	tempResult += secondCopied;
+	*tempResult = 0;
 	return result;
 }
 
@@ -293,6 +320,18 @@ char* FindMatchingClosingChar(char* str, char open, char close, bool canStack = 
 	return 0;
 }
 
+char* CopyString(char* str)
+{
+	if (!str) return 0;
+	int strSize = StringSize(str);
+	if (!strSize) return 0;
+	char* result = new char[strSize + 1];
+	char* tempResult = result;
+	while (*tempResult++ = *str++);
+	return result;
+}
+
+
 StringBuffer BreakStringByToken(char* str, char token)
 {
 	StringBuffer result = {};
@@ -300,6 +339,7 @@ StringBuffer BreakStringByToken(char* str, char token)
 	char* tempStr = str;
 	int lastTokenIndex = -1;
 	int index = 0;
+	bool tokenExists = false;
 	while (tempStr[index])
 	{
 		char At = tempStr[index];
@@ -311,17 +351,131 @@ StringBuffer BreakStringByToken(char* str, char token)
 
 				result.Strings[result.Size++] = Substring(tempStr, lastTokenIndex + 1, count);
 			}
+			else
+			{
+				result.Strings[result.Size++] = Substring(tempStr, 0, index);
+			}
 			lastTokenIndex = index;
+			tokenExists = true;
 		}
 		index++;
 	}
+	if (tokenExists && (index > lastTokenIndex))
+	{
+		result.Strings[result.Size++] = Substring(tempStr, lastTokenIndex + 1, index - lastTokenIndex - 1);
+	}
+	else
+	{
+		result.Strings[result.Size++] = CopyString(str);
+	}
 	return result;
+}
+
+
+char* ReadStringLine(char** str)
+{
+	if (!str) return 0;
+	if (!*str)return 0;
+	char* tempStr = *str;
+	int finalIndex = 0;
+	for (int index = 0;; index++)
+	{
+		char At = tempStr[index];
+		if (At == '\r' || At == '\n' || At == 0)
+		{
+			finalIndex = index;
+			char* nextLine = tempStr + index;
+			while (*nextLine && ((*nextLine == '\r') || (*nextLine == '\n')))
+			{
+				nextLine++;
+			}
+			*str = nextLine;
+			break;
+		}
+	}
+	char* result = 0;
+	if(finalIndex) result = Substring(tempStr, 0, finalIndex);
+	return result;
+}
+
+bool StartsWith(char* baseStr, char* str)
+{
+	if (!baseStr) return false;
+	if (!str) return false;
+	while (*str)
+	{
+		if (*str++ != *baseStr++) return false;
+	}
+	return true;
+}
+
+char* SkipString(char* baseStr, char* str)
+{
+	if (!baseStr) return 0;
+	if (!str) return 0;
+	while (*str)
+	{
+		if (*str++ != *baseStr++) return 0;
+	}
+	return baseStr;
+}
+
+bool IsDigit(char c)
+{
+	return (c > 47) && (c < 58);
+}
+
+int ToDigit(char c)
+{
+	return c - 48;
+}
+
+int ToPower(int base, int pow)
+{
+	if (pow == 0) return 1;
+	while (pow > 1)
+	{
+		base *= base;
+		pow--;
+	}
+	return base;
+}
+
+int StringToInt(char* str)
+{
+	int result = 0;
+	if (!str) return result;
+	char digits[10];
+	int index = 0;
+	while (*str && IsDigit(*str))
+	{
+		digits[index++] = *str++;
+		if (index == 9) break;
+	}
+	for (int i = 0; i < index; i++)
+	{
+		int pow = index - i - 1;
+		result += ToPower(10, pow) * ToDigit(digits[i]);
+	}
+	return result;
+}
+
+bool StringCompare(char* first, char* second)
+{
+	if (!first) return false;
+	if (!second) return false;
+	while (*first || *second)
+	{
+		if (*first++ != *second++) return false;
+	}
+	return true;
 }
 
 void GetAllFilesInDir();
 void SearchFiles();
 OptionBuffer ParseCommandLine(char* line);
 void ParseOptions(OptionBuffer optionbuffer);
+void ReadProgramProperties(char* argv[], int argc);
 
 //    C://d/abc
 //	  C://d

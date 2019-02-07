@@ -9,30 +9,22 @@ std::vector<FileData> Files;
 std::vector<std::string> FilesIncluded;
 std::vector<std::string> FilesExcluded;
 char* CommandLine;
+ProgramSettings Settings;
 
 int main(int argc, char* argv[])
 {
-	
+	ReadProgramProperties(argv, argc);
 #ifdef _DEBUG
-	SearchTerm = "unsigned char*>(&value)), static";
-	strcpy(StartingWorkingDir, "D:\\workspace\\InstantWar\\AndroidUpdate4");
+	//SearchTerm = "unsigned char*>(&value)), static";
+	strcpy(StartingWorkingDir, "D:\\workspace\\Utilities\\FileSearch\\test");
 	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
 
 #endif
 
-	StringBuffer testBuffer = BreakStringByToken(",am,o,randunica,", ',');
-
 	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
 
-	CommandLine = GetCommandLine();
-	
-	OptionBuffer optionBuffer = ParseCommandLine(CommandLine);
-
-	ParseOptions(optionBuffer);
-	
-	
 	BeginCounter();
 
 	GetAllFilesInDir();
@@ -49,7 +41,6 @@ int main(int argc, char* argv[])
 void GetAllFilesInDir()
 {
 	char CurrentDir[MAX_PATH];
-	char FullFileName[MAX_PATH];
 	GetCurrentDirectoryA(MAX_PATH, CurrentDir);
 	WIN32_FIND_DATA CurrentFileData;
 	strcat_s(CurrentDir, "\\*");
@@ -66,21 +57,34 @@ void GetAllFilesInDir()
 		else
 		{
 			bool ShouldProcess = true;
-			if (FilesIncluded.size()) ShouldProcess = false;
+			if (Settings.filesToInclude.Size) ShouldProcess = false;
 
-			for (std::string& FileSugested : FilesIncluded)
+			for (int i = 0; i < Settings.filesToInclude.Size; i++)
 			{
+				char* FileSugested = Settings.filesToInclude.Strings[i];
 				char TempSugestedName[1024];
 				char TempFileName[1024];
-				strcpy_s(TempSugestedName, FileSugested.c_str());
+				strcpy_s(TempSugestedName, FileSugested);
 				strcpy_s(TempFileName, CurrentFileData.cFileName);
 
 				char* LoweredTempSug = ToLower(TempSugestedName);
 				char* LoweredTempFile = ToLower(TempFileName);
 				//Handle wild card
-				if (strstr(TempSugestedName, "*.") == TempSugestedName)
+				int preWildCardIndex = FindString(TempSugestedName, "*.");
+				int postWildCardIndex = FindString(TempSugestedName, ".*");
+				if (preWildCardIndex == 0)
 				{
-					if (strstr(LoweredTempFile, LoweredTempSug + 1))
+					if (FindString(LoweredTempFile, TempSugestedName + 1) >= 0)
+					{
+						ShouldProcess = true;
+						break;
+					}
+				}
+				else if (postWildCardIndex > 0)
+				{
+					//@Leak
+					char* beforeWildCard = Substring(TempSugestedName, 0, StringSize(TempSugestedName) - 1);
+					if (FindString(LoweredTempFile, beforeWildCard) >= 0)
 					{
 						ShouldProcess = true;
 						break;
@@ -88,20 +92,64 @@ void GetAllFilesInDir()
 				}
 				else
 				{
-					if (strstr(LoweredTempFile, LoweredTempSug) && (StringSize(LoweredTempFile) == StringSize(LoweredTempSug)))
+					int index = FindString(LoweredTempFile, LoweredTempSug);
+					if (StringCompare(LoweredTempFile, LoweredTempSug))
 					{
 						ShouldProcess = true;
 						break;
 					}
 				}
 			}
+			for (int i = 0; i < Settings.filesToExclude.Size; i++)
+			{
+				char* FileSugested = Settings.filesToExclude.Strings[i];
+				char TempSugestedName[1024];
+				char TempFileName[1024];
+				strcpy_s(TempSugestedName, FileSugested);
+				strcpy_s(TempFileName, CurrentFileData.cFileName);
+
+				char* LoweredTempSug = ToLower(TempSugestedName);
+				char* LoweredTempFile = ToLower(TempFileName);
+
+				//Handle wild card
+				int preWildCardIndex = FindString(TempSugestedName, "*.");
+				int postWildCardIndex = FindString(TempSugestedName, ".*");
+				if (preWildCardIndex == 0)
+				{
+					if (FindString(LoweredTempFile, TempSugestedName + 1) >= 0)
+					{
+						ShouldProcess = false;
+						break;
+					}
+				}
+				else if (postWildCardIndex > 0)
+				{
+					//@Leak
+					char* beforeWildCard = Substring(TempSugestedName, 0, StringSize(TempSugestedName) - 1);
+					if (FindString(LoweredTempFile, beforeWildCard) >= 0)
+					{
+						ShouldProcess = false;
+						break;
+					}
+				}
+				else
+				{
+					if (StringCompare(LoweredTempFile, LoweredTempSug))
+					{
+						ShouldProcess = false;
+						break;
+					}
+				}
+			}
 			if (ShouldProcess)
 			{
-				GetCurrentDirectoryA(MAX_PATH, FullFileName);
-				strcat_s(FullFileName, "\\");
-				strcat_s(FullFileName, CurrentFileData.cFileName);
-
-				Files.push_back({ CurrentFileData.cFileName, FullFileName, CurrentFileData.nFileSizeLow });
+				char CurrentDir[MAX_PATH];
+				GetCurrentDirectoryA(MAX_PATH, CurrentDir);
+				//@Leak
+				char* FileName = StringCopy(CurrentFileData.cFileName);
+				char* first = StringConcat(CurrentDir, "\\");
+				char* FullFileName = StringConcat(first, FileName);
+				Files.push_back({ FileName, FullFileName, CurrentFileData.nFileSizeLow });
 			}
 		}
 	}
@@ -115,13 +163,14 @@ void SearchFiles()
 	for (FileData& names : Files)
 	{
 		FILE* pFile = 0;
-		fopen_s(&pFile, names.AbsPath, "r");
+		fopen_s(&pFile, names.AbsPath, "rb");
 		if (pFile == nullptr) continue;
 		if (names.Size == 0) continue;
-		char* Contents = new char[names.Size];
+		char* Contents = new char[names.Size + 1];
+		
 		char* TempCont = Contents;
 		fread(Contents, 1, names.Size, pFile);
-
+		Contents[names.Size] = 0;
 		int LineNumber = 1;
 		int SearchTermSize = StringSize(SearchTerm);
 		char* LineStart = Contents;
@@ -232,76 +281,51 @@ void SearchFiles()
 	}
 }
 
-
-void ParseOptions(OptionBuffer optBuffer)
+void ReadProgramProperties(char* argv[], int argc)
 {
-	for (int i = 0; i < optBuffer.Size; i++)
+	//Set default properties that will be overriden if it exists in file
+	Settings.numberOfThreads = 1;
+
+	FILE* file = 0;
+	fopen_s(&file, "config.fsinfo", "rb");
+	if (file)
 	{
-		ProgramOption option = optBuffer.Buffer[i];
-		switch (option.Name)
-		{
-			case 's':
-			{
-				//TODO this needs to be parsed now
-				SearchTerm = option.Args.Strings[0]; 
-			}break;
+		fseek(file, 0, SEEK_END);
+		int fileSize = ftell(file);
+		fseek(file, 0, SEEK_SET);
+		if (!fileSize) return;
+		char* fileContents = new char[fileSize + 1];
+		fread(fileContents, 1, fileSize, file);
+		fileContents[fileSize] = 0;
 
-			case 'i':
-			{
-				//TODO this needs to be parsed now
-				//FilesIncluded.push_back(option.Args);
-			}break;
-
-			default:
-			{
-				printf("Ignoring unknown argument %c.", option.Name);
-			}break;
-		}
-	}
-}
-
-OptionBuffer ParseCommandLine(char* line)
-{
-	OptionBuffer result = { };
-	result.Buffer = new ProgramOption[SUPPORTED_OPTIONS];
-
-	int optPos = FindString(line, " -");
-	while (optPos != -1)
-	{
-		ProgramOption opt = {};
-		opt.Name = line[optPos + 2];
-
-		//See if there is an open bracket or quote before searching the next arg
-		char* somethingToClose = 0;
-		int argPos = optPos + 3;
-
-		if (line[argPos] == '[') somethingToClose = "]";
+		char* line = 0;
+		char* remainingContents = fileContents;
 		
-		int somethingToClosePos = -1;
-
-		if (somethingToClose)
+		do
 		{
-			somethingToClosePos = FindString(line, somethingToClose, argPos + 1);
-			if (somethingToClosePos == -1)
+			//@Leak ReadStringLine allocates the string that returns
+			line = ReadStringLine(&remainingContents);
+			if (StartsWith(line, "exclude"))
 			{
-				TerminateError("No matching %s found for option [%c]", somethingToClose, opt.Name);
+				char* valueStr = SkipString(line, "exclude");
+				valueStr++;
+				Settings.filesToExclude = BreakStringByToken(valueStr, ',');
 			}
-			optPos = FindString(line, " -", somethingToClosePos);
-			StringBuffer temp = {};
-			temp.Strings[temp.Size++] = Substring(line, argPos);
-			opt.Args = temp;
+			else if (StartsWith(line, "threads"))
+			{
+				char* valueStr = SkipString(line, "threads");
+				valueStr++;
+				Settings.numberOfThreads = StringToInt(valueStr);
+			}
 		}
-		else
-		{
-			optPos = FindString(line, " -");
-			StringBuffer temp = {};
-			temp.Strings[temp.Size++] = Substring(line, argPos, optPos - argPos);
-			opt.Args = temp;
-		}
-		
-		
-		result.Buffer[result.Size++] = opt;
+		while (line);
 	}
-	return result;
+
+	Settings.SearchTerm = argv[1];
+	for (int i = 2; i < argc; i++)
+	{
+		StringBuffer& buf = Settings.filesToInclude;
+		buf.Strings[buf.Size++] = argv[i];
+	}
 }
 
