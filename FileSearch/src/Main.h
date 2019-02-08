@@ -48,10 +48,10 @@ struct OptionBuffer
 struct ProgramSettings
 {
 	char* SearchTerm;
-	StringBuffer filesToInclude;
-	StringBuffer filesToExclude;
-	int numberOfThreads;
-
+	StringBuffer FilesToInclude;
+	StringBuffer FilesToExclude;
+	int NumberOfThreads;
+	int OutputLineLength;
 };
 
 char* ToLower(char* str)
@@ -92,6 +92,14 @@ int EndCounter()
 	return result;
 }
 
+int StringSize(const char* str)
+{
+	if (!str) return 0;
+	int result = 0;
+	while (*str++) result++;
+	return result;
+}
+
 bool BeginsWith(const char* str, const char* with)
 {
 	return strstr(str, with) == str;
@@ -119,7 +127,7 @@ void ClearOptionBuffer(OptionBuffer* buf)
 char* Substring(char* source, int startPos = 0, int count = 0)
 {
 	char* result = 0;
-	int sourceLen = strlen(source);
+	int sourceLen = StringSize(source);
 	if ((startPos < 0) || count < 0) return result;
 	//if (count == 0) count = sourceLen - startPos;
 	if (sourceLen < (startPos + count)) count = sourceLen - startPos;
@@ -134,13 +142,7 @@ char* Substring(char* source, int startPos = 0, int count = 0)
 	return result;
 }
 
-int StringSize(const char* str)
-{
-	if (!str) return 0;
-	int result = 0;
-	while (*str++) result++;
-	return result;
-}
+
 
 int StringCopy(const char* from, char* dest)
 {
@@ -245,8 +247,8 @@ char* GetRelativePath(const char* cwd, const char* absPath)
 		slash = '\\';
 	}
 
-	int absPathSize = strlen(absPath);
-	int cwdPathSize = strlen(cwd);
+	int absPathSize = StringSize(absPath);
+	int cwdPathSize = StringSize(cwd);
 
 	char* result = new char[absPathSize + 1];
 	int startingIndex = 0;
@@ -471,11 +473,13 @@ bool StringCompare(char* first, char* second)
 	return true;
 }
 
+char* GetExePath()
+{
+	char* result = new char[MAX_PATH];
+	GetModuleFileName(NULL, result, MAX_PATH);
+	return result;
+}
+
 void GetAllFilesInDir();
 void SearchFiles();
-OptionBuffer ParseCommandLine(char* line);
-void ParseOptions(OptionBuffer optionbuffer);
 void ReadProgramProperties(char* argv[], int argc);
-
-//    C://d/abc
-//	  C://d

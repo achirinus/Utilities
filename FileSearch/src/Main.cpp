@@ -1,22 +1,17 @@
 
 #include "Main.h"
 
-const char* SearchTerm;
-int OutputLineLength = 100;
+
 char StartingWorkingDir[MAX_PATH];
 
 std::vector<FileData> Files;
-std::vector<std::string> FilesIncluded;
-std::vector<std::string> FilesExcluded;
-char* CommandLine;
 ProgramSettings Settings;
 
 int main(int argc, char* argv[])
 {
 	ReadProgramProperties(argv, argc);
 #ifdef _DEBUG
-	//SearchTerm = "unsigned char*>(&value)), static";
-	strcpy(StartingWorkingDir, "D:\\workspace\\Utilities\\FileSearch\\test");
+	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate4");
 	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
@@ -31,7 +26,7 @@ int main(int argc, char* argv[])
 
 	int GetFilesTime = EndCounter();
 
-	printf("GetAllFilesInDir time: %dms", GetFilesTime);
+	printf("GetAllFilesInDir time: %dms\n", GetFilesTime);
 
 	SearchFiles();
 
@@ -57,11 +52,11 @@ void GetAllFilesInDir()
 		else
 		{
 			bool ShouldProcess = true;
-			if (Settings.filesToInclude.Size) ShouldProcess = false;
+			if (Settings.FilesToInclude.Size) ShouldProcess = false;
 
-			for (int i = 0; i < Settings.filesToInclude.Size; i++)
+			for (int i = 0; i < Settings.FilesToInclude.Size; i++)
 			{
-				char* FileSugested = Settings.filesToInclude.Strings[i];
+				char* FileSugested = Settings.FilesToInclude.Strings[i];
 				char TempSugestedName[1024];
 				char TempFileName[1024];
 				strcpy_s(TempSugestedName, FileSugested);
@@ -100,9 +95,9 @@ void GetAllFilesInDir()
 					}
 				}
 			}
-			for (int i = 0; i < Settings.filesToExclude.Size; i++)
+			for (int i = 0; i < Settings.FilesToExclude.Size; i++)
 			{
-				char* FileSugested = Settings.filesToExclude.Strings[i];
+				char* FileSugested = Settings.FilesToExclude.Strings[i];
 				char TempSugestedName[1024];
 				char TempFileName[1024];
 				strcpy_s(TempSugestedName, FileSugested);
@@ -172,29 +167,30 @@ void SearchFiles()
 		fread(Contents, 1, names.Size, pFile);
 		Contents[names.Size] = 0;
 		int LineNumber = 1;
-		int SearchTermSize = StringSize(SearchTerm);
+		int SearchTermSize = StringSize(Settings.SearchTerm);
 		char* LineStart = Contents;
 		char* LineEnd = 0;
-
-		while (*TempCont)
+		bool ShouldBreak = false;
+		do
 		{
-			if (*TempCont == '\n')
+			if ((*TempCont == '\n') || (*TempCont == 0))
 			{
+				if (*TempCont == 0) ShouldBreak = true;
 				LineEnd = TempCont;
 
 				char temp[MAX_LINE_BUFFER_LENGTH + 1];
 				int count = LineEnd - LineStart;
 
-				if (count <= OutputLineLength)
+				if (count <= Settings.OutputLineLength)
 				{
 					strncpy_s(temp, LineStart, count);
 				}
 				else
 				{
 					//TODO this is not safe, those numbers can be <=0
-					int AvailableCharCount = OutputLineLength - SearchTermSize - 7;
+					int AvailableCharCount = Settings.OutputLineLength - SearchTermSize - 7;
 					int NumberOfSideChars = AvailableCharCount / 2;
-					char* BeginOfSearchString = strstr(LineStart, SearchTerm);
+					char* BeginOfSearchString = strstr(LineStart, Settings.SearchTerm);
 					if (BeginOfSearchString && (BeginOfSearchString < LineEnd))
 					{
 						int NumOfCharsBeforeTerm = BeginOfSearchString - LineStart;
@@ -225,7 +221,7 @@ void SearchFiles()
 							tempStr += StartOfPre[i];
 						}
 
-						tempStr += SearchTerm;
+						tempStr += Settings.SearchTerm;
 
 						char* StartOfAfter = BeginOfSearchString + SearchTermSize;
 						for (int i = 0; i < NumOfCharsAfterTerm; i++)
@@ -242,7 +238,7 @@ void SearchFiles()
 					}
 				}
 
-				if (char* BeginOfSearchString = strstr(temp, SearchTerm))
+				if (char* BeginOfSearchString = strstr(temp, Settings.SearchTerm))
 				{
 					HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 					CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
@@ -253,7 +249,7 @@ void SearchFiles()
 					strncpy_s(lineToString, temp, BeginOfSearchString - temp);
 					char lineFromString[MAX_LINE_BUFFER_LENGTH];
 
-					int SearchLen = StringSize(SearchTerm);
+					int SearchLen = StringSize(Settings.SearchTerm);
 					char* EndOfSearch = BeginOfSearchString + SearchLen;
 
 					strcpy_s(lineFromString, EndOfSearch);
@@ -264,7 +260,7 @@ void SearchFiles()
 					printf("%s", lineToString);
 					SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
 
-					printf("%s", SearchTerm);
+					printf("%s", Settings.SearchTerm);
 
 					SetConsoleTextAttribute(hConsole, currentColor);
 
@@ -272,9 +268,12 @@ void SearchFiles()
 				}
 				LineNumber++;
 				LineStart = TempCont + 1;
+				if (ShouldBreak) break;
 			}
 			TempCont++;
 		}
+		while (true);
+		
 
 		delete[] Contents;
 		fclose(pFile);
@@ -284,10 +283,12 @@ void SearchFiles()
 void ReadProgramProperties(char* argv[], int argc)
 {
 	//Set default properties that will be overriden if it exists in file
-	Settings.numberOfThreads = 1;
+	Settings.NumberOfThreads = 1;
 
 	FILE* file = 0;
-	fopen_s(&file, "config.fsinfo", "rb");
+	char* fileName = GetExePath();
+	char* fullFileName = StringConcat(fileName, "config.fsinfo");
+	fopen_s(&file, fullFileName, "rb");
 	if (file)
 	{
 		fseek(file, 0, SEEK_END);
@@ -309,13 +310,19 @@ void ReadProgramProperties(char* argv[], int argc)
 			{
 				char* valueStr = SkipString(line, "exclude");
 				valueStr++;
-				Settings.filesToExclude = BreakStringByToken(valueStr, ',');
+				Settings.FilesToExclude = BreakStringByToken(valueStr, ',');
 			}
 			else if (StartsWith(line, "threads"))
 			{
 				char* valueStr = SkipString(line, "threads");
 				valueStr++;
-				Settings.numberOfThreads = StringToInt(valueStr);
+				Settings.NumberOfThreads = StringToInt(valueStr);
+			}
+			else if (StartsWith(line, "line"))
+			{
+				char* valueStr = SkipString(line, "line");
+				valueStr++;
+				Settings.OutputLineLength = StringToInt(valueStr);
 			}
 		}
 		while (line);
@@ -324,7 +331,7 @@ void ReadProgramProperties(char* argv[], int argc)
 	Settings.SearchTerm = argv[1];
 	for (int i = 2; i < argc; i++)
 	{
-		StringBuffer& buf = Settings.filesToInclude;
+		StringBuffer& buf = Settings.FilesToInclude;
 		buf.Strings[buf.Size++] = argv[i];
 	}
 }

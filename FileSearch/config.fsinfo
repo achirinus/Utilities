@@ -1,2 +1,3 @@
 exclude=*.h,abc.txt,yellow.txt
 threads=2
+line=100
