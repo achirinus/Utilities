@@ -1,17 +1,19 @@
 
-#include "Main.h"
+#include "Helpers.h"
 
 
 char StartingWorkingDir[MAX_PATH];
+char InitialWorkingDir[MAX_PATH];
 
 std::vector<FileData> Files;
 ProgramSettings Settings;
 
 int main(int argc, char* argv[])
 {
+	GetCurrentDirectoryA(MAX_PATH, InitialWorkingDir);
 	ReadProgramProperties(argv, argc);
 #ifdef _DEBUG
-	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate4");
+	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate4\\Source");
 	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
@@ -21,15 +23,17 @@ int main(int argc, char* argv[])
 	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
 
 	BeginCounter();
-
 	GetAllFilesInDir();
+	int GetFilesDuration = EndCounter();
 
-	int GetFilesTime = EndCounter();
-
-	printf("GetAllFilesInDir time: %dms\n", GetFilesTime);
-
+	if(Settings.ShowTimes) printf("File gather duration: %dms\n", GetFilesDuration);
+	
+	BeginCounter();
 	SearchFiles();
+	int SearchFilesDuration = EndCounter();
+	if (Settings.ShowTimes) printf("Files search duration: %dms\n", SearchFilesDuration);
 
+	if (Settings.ShowTimes) printf("Total time: %dms\n", SearchFilesDuration + GetFilesDuration);
 	return 0;
 }
 
@@ -168,112 +172,107 @@ void SearchFiles()
 		Contents[names.Size] = 0;
 		int LineNumber = 1;
 		int SearchTermSize = StringSize(Settings.SearchTerm);
-		char* LineStart = Contents;
-		char* LineEnd = 0;
 		bool ShouldBreak = false;
-		do
+		char* Line = ReadStringLine(&TempCont);
+		while (Line)
 		{
-			if ((*TempCont == '\n') || (*TempCont == 0))
+			char temp[MAX_LINE_BUFFER_LENGTH + 1];
+			int count = StringSize(Line);
+
+			if (count <= Settings.OutputLineLength)
 			{
-				if (*TempCont == 0) ShouldBreak = true;
-				LineEnd = TempCont;
-
-				char temp[MAX_LINE_BUFFER_LENGTH + 1];
-				int count = LineEnd - LineStart;
-
-				if (count <= Settings.OutputLineLength)
-				{
-					strncpy_s(temp, LineStart, count);
-				}
-				else
-				{
-					//TODO this is not safe, those numbers can be <=0
-					int AvailableCharCount = Settings.OutputLineLength - SearchTermSize - 7;
-					int NumberOfSideChars = AvailableCharCount / 2;
-					char* BeginOfSearchString = strstr(LineStart, Settings.SearchTerm);
-					if (BeginOfSearchString && (BeginOfSearchString < LineEnd))
-					{
-						int NumOfCharsBeforeTerm = BeginOfSearchString - LineStart;
-						int NumOfCharsAfterTerm = LineEnd - BeginOfSearchString;
-
-						bool PreDotsRequired = false;
-						bool PostDotsRequired = false;
-
-						if (NumOfCharsBeforeTerm > NumberOfSideChars)
-						{
-							PreDotsRequired = true;
-							NumOfCharsBeforeTerm = NumberOfSideChars;
-						}
-						if (NumOfCharsAfterTerm > NumberOfSideChars)
-						{
-							PostDotsRequired = true;
-							NumOfCharsAfterTerm = NumberOfSideChars;
-						}
-						std::string tempStr;
-
-						if (PreDotsRequired)
-						{
-							tempStr += "...";
-						}
-						char* StartOfPre = BeginOfSearchString - NumOfCharsBeforeTerm;
-						for (int i = 0; i < NumOfCharsBeforeTerm; i++)
-						{
-							tempStr += StartOfPre[i];
-						}
-
-						tempStr += Settings.SearchTerm;
-
-						char* StartOfAfter = BeginOfSearchString + SearchTermSize;
-						for (int i = 0; i < NumOfCharsAfterTerm; i++)
-						{
-							tempStr += StartOfAfter[i];
-						}
-
-						if (PostDotsRequired)
-						{
-							tempStr += "...";
-						}
-
-						strncpy_s(temp, tempStr.c_str(), tempStr.size() + 1);
-					}
-				}
-
-				if (char* BeginOfSearchString = strstr(temp, Settings.SearchTerm))
-				{
-					HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-					CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-					GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-					WORD currentColor = consoleInfo.wAttributes;
-
-					char lineToString[MAX_LINE_BUFFER_LENGTH];
-					strncpy_s(lineToString, temp, BeginOfSearchString - temp);
-					char lineFromString[MAX_LINE_BUFFER_LENGTH];
-
-					int SearchLen = StringSize(Settings.SearchTerm);
-					char* EndOfSearch = BeginOfSearchString + SearchLen;
-
-					strcpy_s(lineFromString, EndOfSearch);
-
-					char* relativeFilePath = GetRelativePath(StartingWorkingDir, names.AbsPath);
-
-					printf("%s(%d): ", relativeFilePath, LineNumber);
-					printf("%s", lineToString);
-					SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
-
-					printf("%s", Settings.SearchTerm);
-
-					SetConsoleTextAttribute(hConsole, currentColor);
-
-					printf("%s\n", lineFromString);
-				}
-				LineNumber++;
-				LineStart = TempCont + 1;
-				if (ShouldBreak) break;
+				strncpy_s(temp, Line, count);
 			}
-			TempCont++;
+			else
+			{
+				//TODO this is not safe, those numbers can be <=0
+				int AvailableCharCount = Settings.OutputLineLength - SearchTermSize - 7;
+				int NumberOfSideChars = AvailableCharCount / 2;
+				int FoundIndex = FindString(Line, Settings.SearchTerm);
+				
+				if (FoundIndex >= 0)
+				{
+					char* BeginOfSearchString = Line + FoundIndex;
+					int NumOfCharsBeforeTerm = BeginOfSearchString - Line;
+					int NumOfCharsAfterTerm = (Line + count) - (BeginOfSearchString + SearchTermSize);
+
+					bool PreDotsRequired = false;
+					bool PostDotsRequired = false;
+
+					if (NumOfCharsBeforeTerm > NumberOfSideChars)
+					{
+						PreDotsRequired = true;
+						NumOfCharsBeforeTerm = NumberOfSideChars;
+					}
+					if (NumOfCharsAfterTerm > NumberOfSideChars)
+					{
+						PostDotsRequired = true;
+						NumOfCharsAfterTerm = NumberOfSideChars;
+					}
+					std::string tempStr;
+
+					if (PreDotsRequired)
+					{
+						tempStr += "...";
+					}
+					char* StartOfPre = BeginOfSearchString - NumOfCharsBeforeTerm;
+					for (int i = 0; i < NumOfCharsBeforeTerm; i++)
+					{
+						tempStr += StartOfPre[i];
+					}
+
+					tempStr += Settings.SearchTerm;
+
+					char* StartOfAfter = BeginOfSearchString + SearchTermSize;
+					for (int i = 0; i < NumOfCharsAfterTerm; i++)
+					{
+						tempStr += StartOfAfter[i];
+					}
+
+					if (PostDotsRequired)
+					{
+						tempStr += "...";
+					}
+
+					strncpy_s(temp, tempStr.c_str(), tempStr.size() + 1);
+				}
+			}
+
+			if (char* BeginOfSearchString = strstr(temp, Settings.SearchTerm))
+			{
+				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+				CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+				GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+				WORD currentColor = consoleInfo.wAttributes;
+
+				char lineToString[MAX_LINE_BUFFER_LENGTH];
+				strncpy_s(lineToString, temp, BeginOfSearchString - temp);
+				char lineFromString[MAX_LINE_BUFFER_LENGTH];
+
+				int SearchLen = StringSize(Settings.SearchTerm);
+				char* EndOfSearch = BeginOfSearchString + SearchLen;
+
+				strcpy_s(lineFromString, EndOfSearch);
+				char* filename = names.FileName;
+				if (Settings.LongFilename)
+				{
+					filename = GetRelativePath(StartingWorkingDir, names.AbsPath);
+				}
+				printf("%s(%d): ", filename, LineNumber);
+				printf("%s", lineToString);
+				SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+
+				printf("%s", Settings.SearchTerm);
+
+				SetConsoleTextAttribute(hConsole, currentColor);
+
+				printf("%s\n", lineFromString);
+			}
+			LineNumber++;
+			delete[] Line;
+			Line = 0;
+			Line = ReadStringLine(&TempCont);
 		}
-		while (true);
-		
 
 		delete[] Contents;
 		fclose(pFile);
@@ -284,6 +283,9 @@ void ReadProgramProperties(char* argv[], int argc)
 {
 	//Set default properties that will be overriden if it exists in file
 	Settings.NumberOfThreads = 1;
+	Settings.OutputLineLength = 256;
+	Settings.LongFilename = false;
+	Settings.ShowTimes = false;
 
 	FILE* file = 0;
 	char* fileName = GetExePath();
@@ -314,15 +316,19 @@ void ReadProgramProperties(char* argv[], int argc)
 			}
 			else if (StartsWith(line, "threads"))
 			{
-				char* valueStr = SkipString(line, "threads");
-				valueStr++;
-				Settings.NumberOfThreads = StringToInt(valueStr);
+				Settings.NumberOfThreads = GetIntValue(line, "threads");
 			}
 			else if (StartsWith(line, "line"))
 			{
-				char* valueStr = SkipString(line, "line");
-				valueStr++;
-				Settings.OutputLineLength = StringToInt(valueStr);
+				Settings.OutputLineLength = GetIntValue(line, "line");
+			}
+			else if (StartsWith(line, "filename"))
+			{
+				Settings.LongFilename = GetBoolValueWithOptions(line, "filename", "long", "short");
+			}
+			else if (StartsWith(line, "show_times"))
+			{
+				Settings.ShowTimes = GetBoolValue(line, "show_times");
 			}
 		}
 		while (line);

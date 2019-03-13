@@ -1,58 +1,12 @@
-#pragma once
-#include <Windows.h>
-#include <cstdio>
-#include <cstring>
-#include <vector>
-#include <ctype.h>
-#include <cstdio>
 
+#include "StringHelpers.h"
 
-#define MAX_LINE_BUFFER_LENGTH 512
-#define SUPPORTED_OPTIONS 20 //Just make sure this is way bigger than number of options
-
-const char* HelpText =
-"Usage: FileSearch -s\"[search_string]\" <options> \n"
-"Use [arg,arg,..] only to specify multiple arguments to an option\n"
-"Options: \n"
-"-t[NUM]	NUM=number of threads to use(default = max possible)\n"
-"-e[FILE_NAME] FILE_NAME=name of the file/folder to exclude\n"
-"-i[FILE_NAME] FILE_NAME=name of the file/folder to include(will exclude everything else)\n";
-
-
-
-struct FileData
+char ToLower(char c)
 {
-	char* FileName;
-	char* AbsPath;
-	unsigned Size;
-};
-
-struct StringBuffer
-{
-	char* Strings[50];
-	int Size;
-};
-
-struct ProgramOption
-{
-	char Name;
-	StringBuffer Args;
-};
-
-struct OptionBuffer
-{
-	ProgramOption* Buffer;
-	int Size;
-};
-
-struct ProgramSettings
-{
-	char* SearchTerm;
-	StringBuffer FilesToInclude;
-	StringBuffer FilesToExclude;
-	int NumberOfThreads;
-	int OutputLineLength;
-};
+	char result = c;
+	if ((c > 64) && (c < 91)) result = c + 32;
+	return result;
+}
 
 char* ToLower(char* str)
 {
@@ -60,35 +14,9 @@ char* ToLower(char* str)
 	if (!str) return str;
 	while (*str)
 	{
-		*str = tolower(*str);
+		*str = ToLower(*str);
 		*str++;
 	}
-	return result;
-}
-
-long StartTime;
-
-void BeginCounter()
-{
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
-
-	LARGE_INTEGER startCount;
-	QueryPerformanceCounter(&startCount);
-
-	StartTime = (long)((startCount.QuadPart * 1000) / freq.QuadPart);
-}
-
-int EndCounter()
-{
-	int result = 0;
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
-
-	LARGE_INTEGER stopCount;
-	QueryPerformanceCounter(&stopCount);
-	long EndTime = (long)((stopCount.QuadPart * 1000) / freq.QuadPart);
-	result = (int)(EndTime - StartTime);
 	return result;
 }
 
@@ -102,36 +30,17 @@ int StringSize(const char* str)
 
 bool BeginsWith(const char* str, const char* with)
 {
-	return strstr(str, with) == str;
+	return FindString(str, with) == 0;
 }
 
-void TerminateError(char* mes, ...)
-{
-	va_list args;
-	va_start(args, mes);
-
-	vprintf(mes, args);
-	
-	va_end(args);
-	exit(1);
-}
-
-void ClearOptionBuffer(OptionBuffer* buf)
-{
-	if (buf && buf->Buffer)
-	{
-		delete[] buf->Buffer;
-	}
-}
-
-char* Substring(char* source, int startPos = 0, int count = 0)
+char* Substring(char* source, int startPos, int count)
 {
 	char* result = 0;
 	int sourceLen = StringSize(source);
 	if ((startPos < 0) || count < 0) return result;
 	//if (count == 0) count = sourceLen - startPos;
 	if (sourceLen < (startPos + count)) count = sourceLen - startPos;
-	
+
 	result = new char[count + 1];
 	int i = 0;
 	for (; i < count; i++)
@@ -141,8 +50,6 @@ char* Substring(char* source, int startPos = 0, int count = 0)
 	result[i] = 0;
 	return result;
 }
-
-
 
 int StringCopy(const char* from, char* dest)
 {
@@ -169,7 +76,7 @@ char* StringCopy(const char* from)
 	return result;
 }
 
-char* StringConcat(const char* first, const char* second, char* dest = 0)
+char* StringConcat(const char* first, const char* second, char* dest)
 {
 	char* result = 0;
 	int firstSize = StringSize(first);
@@ -194,7 +101,7 @@ char* StringConcat(const char* first, const char* second, char* dest = 0)
 	return result;
 }
 
-int FindString(const char* source, const char* strToFind, int startIndex = 0)
+int FindString(const char* source, const char* strToFind, int startIndex)
 {
 	int result = -1;
 	if (!source || !strToFind) return result;
@@ -210,7 +117,7 @@ int FindString(const char* source, const char* strToFind, int startIndex = 0)
 			bool found = false;
 			result = index;
 			char c = *tempFind++;
-			
+
 			while (c)
 			{
 				if (c != *source)
@@ -232,53 +139,7 @@ int FindString(const char* source, const char* strToFind, int startIndex = 0)
 	return result;
 }
 
-char* GetRelativePath(const char* cwd, const char* absPath)
-{
-	if (!cwd || !absPath) return 0;
-
-	char slash = 0;
-
-	if (FindString(cwd, "/") != -1)
-	{
-		slash = '/';
-	}
-	else
-	{
-		slash = '\\';
-	}
-
-	int absPathSize = StringSize(absPath);
-	int cwdPathSize = StringSize(cwd);
-
-	char* result = new char[absPathSize + 1];
-	int startingIndex = 0;
-	for (; startingIndex < absPathSize; startingIndex++)
-	{
-		if (absPath[startingIndex] != cwd[startingIndex]) break;
-	}
-
-	if (startingIndex != cwdPathSize)
-	{
-		return 0;
-	}
-
-	if (absPath[startingIndex] != slash)
-	{
-		result[0] = slash;
-		strcpy(result + 1, absPath + startingIndex);
-	}
-	else
-	{
-		strcpy(result, absPath + startingIndex);
-	}
-	return result;
-}
-
-
-//Can work for any type of character, but the first occurence of the char must be in the string
-//The type of character is specified by the open and close args
-//The canStack param specifies if another pair of chars can be found inside a pair
-char* FindMatchingClosingChar(char* str, char open, char close, bool canStack = false)
+char* FindMatchingClosingChar(char* str, char open, char close, bool canStack)
 {
 	if (!str) return 0;
 	int openNum = 0;
@@ -332,7 +193,6 @@ char* CopyString(char* str)
 	while (*tempResult++ = *str++);
 	return result;
 }
-
 
 StringBuffer BreakStringByToken(char* str, char token)
 {
@@ -396,7 +256,7 @@ char* ReadStringLine(char** str)
 		}
 	}
 	char* result = 0;
-	if(finalIndex) result = Substring(tempStr, 0, finalIndex);
+	if (finalIndex) result = Substring(tempStr, 0, finalIndex);
 	return result;
 }
 
@@ -472,14 +332,3 @@ bool StringCompare(char* first, char* second)
 	}
 	return true;
 }
-
-char* GetExePath()
-{
-	char* result = new char[MAX_PATH];
-	GetModuleFileName(NULL, result, MAX_PATH);
-	return result;
-}
-
-void GetAllFilesInDir();
-void SearchFiles();
-void ReadProgramProperties(char* argv[], int argc);

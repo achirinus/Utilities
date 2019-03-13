@@ -142,10 +142,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Helpers.cpp" />
     <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\StringHelpers.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Main.h" />
+    <ClInclude Include="src\Helpers.h" />
+    <ClInclude Include="src\StringHelpers.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
