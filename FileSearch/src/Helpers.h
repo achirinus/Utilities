@@ -54,6 +54,7 @@ int EndCounter();
 void TerminateError(char* mes, ...);
 void ClearOptionBuffer(OptionBuffer* buf);
 char* GetRelativePath(const char* cwd, const char* absPath);
+char* GetLastDirPath(char* src);
 char* GetExePath();
 int GetIntValue(char* source, char* var);
 bool GetBoolValueWithOptions(char* source, char* var, char* trueOpt, char* falseOpt);

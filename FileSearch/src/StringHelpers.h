@@ -15,6 +15,7 @@ int StringCopy(const char* from, char* dest);
 char* StringCopy(const char* from);
 char* StringConcat(const char* first, const char* second, char* dest = 0);
 int FindString(const char* source, const char* strToFind, int startIndex = 0);
+int FindLastString(const char* source, const char* strToFind);
 
 //Can work for any type of character, but the first occurence of the char must be in the string
 //The type of character is specified by the open and close args

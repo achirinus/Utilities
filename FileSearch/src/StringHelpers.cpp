@@ -139,6 +139,45 @@ int FindString(const char* source, const char* strToFind, int startIndex)
 	return result;
 }
 
+int FindLastString(const char* source, const char* strToFind)
+{
+	int result = -1;
+	if (!source || !strToFind) return result;
+
+	int index = 0;
+	int lastIndex = index;
+	char temp = *source;
+	while (temp)
+	{
+		if (temp == *strToFind)
+		{
+			const char* tempFind = strToFind;
+			bool found = false;
+			result = index;
+			char c = *tempFind++;
+
+			while (c)
+			{
+				if (c != *source)
+				{
+					result = -1;
+					found = false;
+					break;
+				}
+				source++;
+				index++;
+				c = *tempFind++;
+				found = true;
+			}
+			if (found) lastIndex = index;
+		}
+		source++;
+		temp = *source;
+		index++;
+	}
+	return lastIndex;
+}
+
 char* FindMatchingClosingChar(char* str, char open, char close, bool canStack)
 {
 	if (!str) return 0;

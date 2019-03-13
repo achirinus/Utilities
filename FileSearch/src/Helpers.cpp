@@ -96,6 +96,12 @@ char* GetRelativePath(const char* cwd, const char* absPath)
 	return result;
 }
 
+char* GetLastDirPath(char* src)
+{
+	int LastSlashIndex = FindLastString(src, "\\");
+	return Substring(src, 0, LastSlashIndex);
+}
+
 char* GetExePath()
 {
 	char* result = new char[MAX_PATH];

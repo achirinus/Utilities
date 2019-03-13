@@ -288,8 +288,9 @@ void ReadProgramProperties(char* argv[], int argc)
 	Settings.ShowTimes = false;
 
 	FILE* file = 0;
-	char* fileName = GetExePath();
-	char* fullFileName = StringConcat(fileName, "config.fsinfo");
+	char* exeName = GetExePath();
+	char* exeDir = GetLastDirPath(exeName);
+	char* fullFileName = StringConcat(exeDir, "config.fsinfo");
 	fopen_s(&file, fullFileName, "rb");
 	if (file)
 	{
