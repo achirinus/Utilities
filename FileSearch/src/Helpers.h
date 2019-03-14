@@ -39,6 +39,8 @@ struct ProgramSettings
 	int NumberOfThreads;
 	int OutputLineLength;
 	bool ShowTimes;
+	bool ShowStats;
+	bool ShowInfo;
 	bool LongFilename;
 };
 
@@ -59,3 +61,5 @@ char* GetExePath();
 int GetIntValue(char* source, char* var);
 bool GetBoolValueWithOptions(char* source, char* var, char* trueOpt, char* falseOpt);
 bool GetBoolValue(char* source, char* var);
+void ProcessFile(char* fileName, char* filePath, unsigned fileSize);
+void FindAllFiles();

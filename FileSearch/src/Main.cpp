@@ -4,7 +4,7 @@
 
 char StartingWorkingDir[MAX_PATH];
 char InitialWorkingDir[MAX_PATH];
-
+std::vector<std::string> FoldersToSearch;
 std::vector<FileData> Files;
 ProgramSettings Settings;
 
@@ -12,22 +12,24 @@ int main(int argc, char* argv[])
 {
 	GetCurrentDirectoryA(MAX_PATH, InitialWorkingDir);
 	ReadProgramProperties(argv, argc);
-#ifdef _DEBUG
-	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate4\\Source");
+#ifdef NDEBUG
+	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AmazonUpdate3");
 	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
 
 #endif
 
-	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
+	//GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
+	if (Settings.ShowInfo) printf("Searching in: %s\n", StartingWorkingDir);
 
 	BeginCounter();
-	GetAllFilesInDir();
+	FindAllFiles();
 	int GetFilesDuration = EndCounter();
 
 	if(Settings.ShowTimes) printf("File gather duration: %dms\n", GetFilesDuration);
-	
+	if (Settings.ShowStats) printf("Found %d files.\n", Files.size());
+
 	BeginCounter();
 	SearchFiles();
 	int SearchFilesDuration = EndCounter();
@@ -55,101 +57,7 @@ void GetAllFilesInDir()
 		}
 		else
 		{
-			bool ShouldProcess = true;
-			if (Settings.FilesToInclude.Size) ShouldProcess = false;
-
-			for (int i = 0; i < Settings.FilesToInclude.Size; i++)
-			{
-				char* FileSugested = Settings.FilesToInclude.Strings[i];
-				char TempSugestedName[1024];
-				char TempFileName[1024];
-				strcpy_s(TempSugestedName, FileSugested);
-				strcpy_s(TempFileName, CurrentFileData.cFileName);
-
-				char* LoweredTempSug = ToLower(TempSugestedName);
-				char* LoweredTempFile = ToLower(TempFileName);
-				//Handle wild card
-				int preWildCardIndex = FindString(TempSugestedName, "*.");
-				int postWildCardIndex = FindString(TempSugestedName, ".*");
-				if (preWildCardIndex == 0)
-				{
-					if (FindString(LoweredTempFile, TempSugestedName + 1) >= 0)
-					{
-						ShouldProcess = true;
-						break;
-					}
-				}
-				else if (postWildCardIndex > 0)
-				{
-					//@Leak
-					char* beforeWildCard = Substring(TempSugestedName, 0, StringSize(TempSugestedName) - 1);
-					if (FindString(LoweredTempFile, beforeWildCard) >= 0)
-					{
-						ShouldProcess = true;
-						break;
-					}
-				}
-				else
-				{
-					int index = FindString(LoweredTempFile, LoweredTempSug);
-					if (StringCompare(LoweredTempFile, LoweredTempSug))
-					{
-						ShouldProcess = true;
-						break;
-					}
-				}
-			}
-			for (int i = 0; i < Settings.FilesToExclude.Size; i++)
-			{
-				char* FileSugested = Settings.FilesToExclude.Strings[i];
-				char TempSugestedName[1024];
-				char TempFileName[1024];
-				strcpy_s(TempSugestedName, FileSugested);
-				strcpy_s(TempFileName, CurrentFileData.cFileName);
-
-				char* LoweredTempSug = ToLower(TempSugestedName);
-				char* LoweredTempFile = ToLower(TempFileName);
-
-				//Handle wild card
-				int preWildCardIndex = FindString(TempSugestedName, "*.");
-				int postWildCardIndex = FindString(TempSugestedName, ".*");
-				if (preWildCardIndex == 0)
-				{
-					if (FindString(LoweredTempFile, TempSugestedName + 1) >= 0)
-					{
-						ShouldProcess = false;
-						break;
-					}
-				}
-				else if (postWildCardIndex > 0)
-				{
-					//@Leak
-					char* beforeWildCard = Substring(TempSugestedName, 0, StringSize(TempSugestedName) - 1);
-					if (FindString(LoweredTempFile, beforeWildCard) >= 0)
-					{
-						ShouldProcess = false;
-						break;
-					}
-				}
-				else
-				{
-					if (StringCompare(LoweredTempFile, LoweredTempSug))
-					{
-						ShouldProcess = false;
-						break;
-					}
-				}
-			}
-			if (ShouldProcess)
-			{
-				char CurrentDir[MAX_PATH];
-				GetCurrentDirectoryA(MAX_PATH, CurrentDir);
-				//@Leak
-				char* FileName = StringCopy(CurrentFileData.cFileName);
-				char* first = StringConcat(CurrentDir, "\\");
-				char* FullFileName = StringConcat(first, FileName);
-				Files.push_back({ FileName, FullFileName, CurrentFileData.nFileSizeLow });
-			}
+			//ProcessFile(CurrentFileData);
 		}
 	}
 	SetCurrentDirectory("..");
@@ -323,13 +231,21 @@ void ReadProgramProperties(char* argv[], int argc)
 			{
 				Settings.OutputLineLength = GetIntValue(line, "line");
 			}
-			else if (StartsWith(line, "filename"))
+			else if (StartsWith(line, "filename_format"))
 			{
-				Settings.LongFilename = GetBoolValueWithOptions(line, "filename", "long", "short");
+				Settings.LongFilename = GetBoolValueWithOptions(line, "filename_format", "long", "short");
 			}
 			else if (StartsWith(line, "show_times"))
 			{
 				Settings.ShowTimes = GetBoolValue(line, "show_times");
+			}
+			else if (StartsWith(line, "show_stats"))
+			{
+				Settings.ShowStats = GetBoolValue(line, "show_stats");
+			}
+			else if (StartsWith(line, "show_info"))
+			{
+				Settings.ShowInfo = GetBoolValue(line, "show_info");
 			}
 		}
 		while (line);
@@ -340,6 +256,147 @@ void ReadProgramProperties(char* argv[], int argc)
 	{
 		StringBuffer& buf = Settings.FilesToInclude;
 		buf.Strings[buf.Size++] = argv[i];
+	}
+}
+
+void FindInDirectory(std::string& Dir)
+{
+	std::string currentDir = Dir;
+	currentDir += "\\";
+	std::string findDir = currentDir + "*";
+	WIN32_FIND_DATA CurrentFileData;
+	HANDLE FindHandle = FindFirstFile(findDir.c_str(), &CurrentFileData);
+	while (FindNextFile(FindHandle, &CurrentFileData))
+	{
+		std::string filePath = currentDir;
+		if ((CurrentFileData.cFileName[0] == '.') && (CurrentFileData.cFileName[1] == '.'))
+		{
+			continue;
+		}
+
+		filePath += CurrentFileData.cFileName;
+
+		if (CurrentFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			FoldersToSearch.push_back(filePath);
+		}
+		else
+		{
+			ProcessFile(StringCopy(CurrentFileData.cFileName), StringCopy(filePath.c_str()), CurrentFileData.nFileSizeLow);
+		}
+	}
+	FindClose(FindHandle);
+}
+
+void FindAllFiles()
+{
+	FoldersToSearch.push_back(StartingWorkingDir);
+	
+	do
+	{
+		std::string Dir = FoldersToSearch.back();
+		FoldersToSearch.pop_back();
+		FindInDirectory(Dir);
+	} while (FoldersToSearch.size() > 0);
+}
+
+void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
+{
+	bool ShouldProcess = true;
+	if (Settings.FilesToInclude.Size) ShouldProcess = false;
+
+	for (int i = 0; i < Settings.FilesToInclude.Size; i++)
+	{
+		char* FileSugested = Settings.FilesToInclude.Strings[i];
+		char TempSugestedName[1024];
+		char TempFileName[1024];
+		strcpy_s(TempSugestedName, FileSugested);
+		strcpy_s(TempFileName, fileName);
+
+		char* LoweredTempSug = ToLower(TempSugestedName);
+		char* LoweredTempFile = ToLower(TempFileName);
+		//Handle wild card
+		int preWildCardIndex = FindString(TempSugestedName, "*.");
+		int postWildCardIndex = FindString(TempSugestedName, ".*");
+		if ((preWildCardIndex == 0) && (postWildCardIndex > 0))
+		{
+			ShouldProcess = true;
+			break;
+		}
+		else if (preWildCardIndex == 0)
+		{
+			if (FindString(LoweredTempFile, TempSugestedName + 1) >= 0)
+			{
+				ShouldProcess = true;
+				break;
+			}
+		}
+		else if (postWildCardIndex > 0)
+		{
+			char* beforeWildCard = Substring(TempSugestedName, 0, StringSize(TempSugestedName) - 1);
+			int foundIndex = FindString(LoweredTempFile, beforeWildCard);
+			delete[] beforeWildCard;
+			if (foundIndex >= 0)
+			{
+				ShouldProcess = true;
+				break;
+			}
+		}
+		else
+		{
+			int index = FindString(LoweredTempFile, LoweredTempSug);
+			if (StringCompare(LoweredTempFile, LoweredTempSug))
+			{
+				ShouldProcess = true;
+				break;
+			}
+		}
+	}
+	for (int i = 0; i < Settings.FilesToExclude.Size; i++)
+	{
+		char* FileSugested = Settings.FilesToExclude.Strings[i];
+		char TempSugestedName[1024];
+		char TempFileName[1024];
+		strcpy_s(TempSugestedName, FileSugested);
+		strcpy_s(TempFileName, fileName);
+
+		char* LoweredTempSug = ToLower(TempSugestedName);
+		char* LoweredTempFile = ToLower(TempFileName);
+
+		//Handle wild card
+		int preWildCardIndex = FindString(TempSugestedName, "*.");
+		int postWildCardIndex = FindString(TempSugestedName, ".*");
+		if (preWildCardIndex == 0)
+		{
+			if (FindString(LoweredTempFile, TempSugestedName + 1) >= 0)
+			{
+				ShouldProcess = false;
+				break;
+			}
+		}
+		else if (postWildCardIndex > 0)
+		{
+			char* beforeWildCard = Substring(TempSugestedName, 0, StringSize(TempSugestedName) - 1);
+			int foundIndex = FindString(LoweredTempFile, beforeWildCard);
+			delete[] beforeWildCard;
+			if (foundIndex >= 0)
+			{
+				ShouldProcess = false;
+				break;
+			}
+		}
+		else
+		{
+			if (StringCompare(LoweredTempFile, LoweredTempSug))
+			{
+				ShouldProcess = false;
+				break;
+			}
+		}
+	}
+	if (ShouldProcess)
+	{
+		Files.push_back({ fileName, filePath, fileSize });
 	}
 }
 

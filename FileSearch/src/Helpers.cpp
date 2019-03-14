@@ -138,3 +138,4 @@ bool GetBoolValue(char* source, char* var)
 {
 	return GetBoolValueWithOptions(source, var, "true", "false");
 }
+
