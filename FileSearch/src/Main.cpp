@@ -1,6 +1,7 @@
 
 #include "Helpers.h"
 
+FolderQueue FQueue;
 
 char StartingWorkingDir[MAX_PATH];
 char InitialWorkingDir[MAX_PATH];
@@ -12,15 +13,15 @@ int main(int argc, char* argv[])
 {
 	GetCurrentDirectoryA(MAX_PATH, InitialWorkingDir);
 	ReadProgramProperties(argv, argc);
-#ifdef NDEBUG
-	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AmazonUpdate3");
+#ifdef _DEBUG
+	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate5\\externals\\engine");
 	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
 
 #endif
 
-	//GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
+	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
 	if (Settings.ShowInfo) printf("Searching in: %s\n", StartingWorkingDir);
 
 	BeginCounter();
@@ -259,43 +260,44 @@ void ReadProgramProperties(char* argv[], int argc)
 	}
 }
 
-void FindInDirectory(std::string& Dir)
+void FindInDirectory(char* Dir)
 {
-	std::string currentDir = Dir;
-	currentDir += "\\";
-	std::string findDir = currentDir + "*";
+	char* currentDir = StringConcat(Dir, "\\");
+
+	char* findDir = StringConcat(currentDir, "*");
 	WIN32_FIND_DATA CurrentFileData;
-	HANDLE FindHandle = FindFirstFile(findDir.c_str(), &CurrentFileData);
+	HANDLE FindHandle = FindFirstFile(findDir, &CurrentFileData);
 	while (FindNextFile(FindHandle, &CurrentFileData))
 	{
-		std::string filePath = currentDir;
 		if ((CurrentFileData.cFileName[0] == '.') && (CurrentFileData.cFileName[1] == '.'))
 		{
 			continue;
 		}
 
-		filePath += CurrentFileData.cFileName;
+		char* filePath = StringConcat(currentDir, CurrentFileData.cFileName);
 
 		if (CurrentFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
-			FoldersToSearch.push_back(filePath);
+			PushFolder(&FQueue, filePath);
 		}
 		else
 		{
-			ProcessFile(StringCopy(CurrentFileData.cFileName), StringCopy(filePath.c_str()), CurrentFileData.nFileSizeLow);
+			ProcessFile(StringCopy(CurrentFileData.cFileName), StringCopy(filePath), CurrentFileData.nFileSizeLow);
 		}
+		delete[] filePath;
 	}
+	delete[] currentDir;
+	delete[] findDir;
 	FindClose(FindHandle);
 }
 
 void FindAllFiles()
 {
-	FoldersToSearch.push_back(StartingWorkingDir);
+	PushFolder(&FQueue, StartingWorkingDir);
 	
 	do
 	{
-		std::string Dir = FoldersToSearch.back();
-		FoldersToSearch.pop_back();
+		char* Dir = PopFolder(&FQueue);
 		FindInDirectory(Dir);
 	} while (FoldersToSearch.size() > 0);
 }

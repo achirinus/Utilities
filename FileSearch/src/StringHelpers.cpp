@@ -70,7 +70,7 @@ char* StringCopy(const char* from)
 	if (!from) return result;
 	int size = StringSize(from);
 	if (!size) return result;
-	char* dest = new char[size];
+	char* dest = new char[size + 1];
 	result = dest;
 	while (*dest++ = *from++);
 	return result;

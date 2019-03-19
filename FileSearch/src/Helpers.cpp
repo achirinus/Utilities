@@ -139,3 +139,41 @@ bool GetBoolValue(char* source, char* var)
 	return GetBoolValueWithOptions(source, var, "true", "false");
 }
 
+
+FolderNode* CreateFolderNode(char* name)
+{
+	FolderNode* result = new FolderNode();
+	result->Next = 0;
+	result->Data = StringCopy(name);
+	return result;
+}
+
+void DeleteFolderNode(FolderNode* node)
+{
+	delete node;
+}
+
+void PushFolder(FolderQueue* queue, char* name)
+{
+	if (!queue->Head)
+	{
+		queue->Head = CreateFolderNode(name);
+	}
+	else
+	{
+		FolderNode* Temp = queue->Head;
+		queue->Head = CreateFolderNode(name);
+		queue->Head->Next = Temp;
+	}
+	queue->Size++;
+}
+
+char* PopFolder(FolderQueue* queue)
+{
+	if (!queue->Head) return 0;
+	FolderNode* ResultNode = queue->Head;
+	queue->Size--;
+	queue->Head = ResultNode->Next;
+	char* Result = ResultNode->Data;
+	return Result;
+}

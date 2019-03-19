@@ -44,10 +44,29 @@ struct ProgramSettings
 	bool LongFilename;
 };
 
+struct FolderNode
+{
+	char* Data;
+	FolderNode* Next;
+};
+
+struct FolderQueue
+{
+	FolderNode* Head;
+	int Size;
+};
+
+FolderNode* CreateFolderNode(char* name);
+void DeleteFolderNode(FolderNode* node);
+void PushFolder(FolderQueue* queue, char* name);
+char* PopFolder(FolderQueue* queue);
+
 //Defined in main
 void GetAllFilesInDir();
 void SearchFiles();
 void ReadProgramProperties(char* argv[], int argc);
+void FindAllFiles();
+void ProcessFile(char* fileName, char* filePath, unsigned fileSize);
 //-----
 
 
@@ -61,5 +80,5 @@ char* GetExePath();
 int GetIntValue(char* source, char* var);
 bool GetBoolValueWithOptions(char* source, char* var, char* trueOpt, char* falseOpt);
 bool GetBoolValue(char* source, char* var);
-void ProcessFile(char* fileName, char* filePath, unsigned fileSize);
-void FindAllFiles();
+
+
