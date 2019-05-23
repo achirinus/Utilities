@@ -1,27 +1,30 @@
 
 #include "Helpers.h"
+#include <thread>
+#include <mutex>
 
-FolderQueue FQueue;
+#define FILES_PER_THREAD 20
+
+FolderStack FStack;
 
 char StartingWorkingDir[MAX_PATH];
-char InitialWorkingDir[MAX_PATH];
-std::vector<std::string> FoldersToSearch;
 std::vector<FileData> Files;
+
+std::vector<std::thread> Threads;
+std::mutex OutputMutex;
+
 ProgramSettings Settings;
 
 int main(int argc, char* argv[])
 {
-	GetCurrentDirectoryA(MAX_PATH, InitialWorkingDir);
 	ReadProgramProperties(argv, argc);
 #ifdef _DEBUG
-	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate5\\externals\\engine");
+	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate4\\externals\\engine");
 	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
-
-#endif
-
 	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
+#endif
 	if (Settings.ShowInfo) printf("Searching in: %s\n", StartingWorkingDir);
 
 	BeginCounter();
@@ -32,7 +35,40 @@ int main(int argc, char* argv[])
 	if (Settings.ShowStats) printf("Found %d files.\n", Files.size());
 
 	BeginCounter();
-	SearchFiles();
+	int NumOfFiles = Files.size();
+
+	if ((NumOfFiles > 20) && Settings.NumberOfThreads)
+	{
+		int NumOfFilesPerThread = NumOfFiles / Settings.NumberOfThreads;
+		int Remaining = NumOfFiles % Settings.NumberOfThreads;
+		FilesIndexRange* Ranges = new FilesIndexRange[Settings.NumberOfThreads];
+		int StartIndex = 0;
+		for (int i = 0; i < Settings.NumberOfThreads; i++)
+		{
+			int EndIndex = StartIndex + NumOfFilesPerThread - 1;
+			Ranges[i] = { StartIndex, EndIndex};
+			StartIndex = EndIndex + 1;
+		}
+		if (Remaining)
+		{
+			FilesIndexRange& last = Ranges[Settings.NumberOfThreads - 1];
+			last.End += Remaining;
+		}
+		
+		for (int i = 0; i < Settings.NumberOfThreads; i++)
+		{
+			Threads.push_back(std::thread{ SearchFilesRange, Ranges[i] });
+		}
+		for (int i = 0; i < Threads.size(); i++)
+		{
+			Threads[i].join();
+		}
+	}
+	else
+	{
+		SearchFiles();
+	}
+	
 	int SearchFilesDuration = EndCounter();
 	if (Settings.ShowTimes) printf("Files search duration: %dms\n", SearchFilesDuration);
 
@@ -40,31 +76,129 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-void GetAllFilesInDir()
+void SearchFilesRange(FilesIndexRange range)
 {
-	char CurrentDir[MAX_PATH];
-	GetCurrentDirectoryA(MAX_PATH, CurrentDir);
-	WIN32_FIND_DATA CurrentFileData;
-	strcat_s(CurrentDir, "\\*");
-	HANDLE FindHandle = FindFirstFile(CurrentDir, &CurrentFileData);
-	while (FindNextFile(FindHandle, &CurrentFileData))
+	for (int i = range.Begin; i<= range.End; i++)
 	{
-		if (CurrentFileData.cFileName[0] == '.') continue;
+		FileData& names = Files[i];
+		FILE* pFile = 0;
+		fopen_s(&pFile, names.AbsPath, "rb");
+		if (pFile == nullptr) continue;
+		if (names.Size == 0) continue;
+		char* Contents = new char[names.Size + 1];
 
-		if (CurrentFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		char* TempCont = Contents;
+		fread(Contents, 1, names.Size, pFile);
+		Contents[names.Size] = 0;
+		int LineNumber = 1;
+		int SearchTermSize = StringSize(Settings.SearchTerm);
+		bool ShouldBreak = false;
+		char* Line = ReadStringLine(&TempCont);
+		while (Line)
 		{
-			SetCurrentDirectory(CurrentFileData.cFileName);
-			GetAllFilesInDir();
+			char temp[MAX_LINE_BUFFER_LENGTH + 1];
+			int count = StringSize(Line);
+
+			if (count <= Settings.OutputLineLength)
+			{
+				strncpy_s(temp, Line, count);
+			}
+			else
+			{
+				//TODO this is not safe, those numbers can be <=0
+				int AvailableCharCount = Settings.OutputLineLength - SearchTermSize - 7;
+				int NumberOfSideChars = AvailableCharCount / 2;
+				int FoundIndex = FindString(Line, Settings.SearchTerm);
+
+				if (FoundIndex >= 0)
+				{
+					char* BeginOfSearchString = Line + FoundIndex;
+					int NumOfCharsBeforeTerm = BeginOfSearchString - Line;
+					int NumOfCharsAfterTerm = (Line + count) - (BeginOfSearchString + SearchTermSize);
+
+					bool PreDotsRequired = false;
+					bool PostDotsRequired = false;
+
+					if (NumOfCharsBeforeTerm > NumberOfSideChars)
+					{
+						PreDotsRequired = true;
+						NumOfCharsBeforeTerm = NumberOfSideChars;
+					}
+					if (NumOfCharsAfterTerm > NumberOfSideChars)
+					{
+						PostDotsRequired = true;
+						NumOfCharsAfterTerm = NumberOfSideChars;
+					}
+					std::string tempStr;
+
+					if (PreDotsRequired)
+					{
+						tempStr += "...";
+					}
+					char* StartOfPre = BeginOfSearchString - NumOfCharsBeforeTerm;
+					for (int i = 0; i < NumOfCharsBeforeTerm; i++)
+					{
+						tempStr += StartOfPre[i];
+					}
+
+					tempStr += Settings.SearchTerm;
+
+					char* StartOfAfter = BeginOfSearchString + SearchTermSize;
+					for (int i = 0; i < NumOfCharsAfterTerm; i++)
+					{
+						tempStr += StartOfAfter[i];
+					}
+
+					if (PostDotsRequired)
+					{
+						tempStr += "...";
+					}
+
+					strncpy_s(temp, tempStr.c_str(), tempStr.size() + 1);
+				}
+			}
+
+			if (char* BeginOfSearchString = strstr(temp, Settings.SearchTerm))
+			{
+				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+				CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+				GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+				WORD currentColor = consoleInfo.wAttributes;
+
+				char lineToString[MAX_LINE_BUFFER_LENGTH];
+				strncpy_s(lineToString, temp, BeginOfSearchString - temp);
+				char lineFromString[MAX_LINE_BUFFER_LENGTH];
+
+				int SearchLen = StringSize(Settings.SearchTerm);
+				char* EndOfSearch = BeginOfSearchString + SearchLen;
+
+				strcpy_s(lineFromString, EndOfSearch);
+				char* filename = names.FileName;
+				if (Settings.LongFilename)
+				{
+					filename = GetRelativePath(StartingWorkingDir, names.AbsPath);
+				}
+				std::lock_guard<std::mutex> lock(OutputMutex);
+				printf("%s(%d): ", filename, LineNumber);
+				printf("%s", lineToString);
+				SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+
+				printf("%s", Settings.SearchTerm);
+
+				SetConsoleTextAttribute(hConsole, currentColor);
+
+				printf("%s\n", lineFromString);
+			}
+			LineNumber++;
+			delete[] Line;
+			Line = 0;
+			Line = ReadStringLine(&TempCont);
 		}
-		else
-		{
-			//ProcessFile(CurrentFileData);
-		}
+
+		delete[] Contents;
+		fclose(pFile);
 	}
-	SetCurrentDirectory("..");
-	FindClose(FindHandle);
 }
-
 
 void SearchFiles()
 {
@@ -191,7 +325,6 @@ void SearchFiles()
 void ReadProgramProperties(char* argv[], int argc)
 {
 	//Set default properties that will be overriden if it exists in file
-	Settings.NumberOfThreads = 1;
 	Settings.OutputLineLength = 256;
 	Settings.LongFilename = false;
 	Settings.ShowTimes = false;
@@ -278,7 +411,7 @@ void FindInDirectory(char* Dir)
 
 		if (CurrentFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
-			PushFolder(&FQueue, filePath);
+			PushFolder(&FStack, filePath);
 		}
 		else
 		{
@@ -293,13 +426,13 @@ void FindInDirectory(char* Dir)
 
 void FindAllFiles()
 {
-	PushFolder(&FQueue, StartingWorkingDir);
+	PushFolder(&FStack, StartingWorkingDir);
 	
 	do
 	{
-		char* Dir = PopFolder(&FQueue);
+		char* Dir = PopFolder(&FStack);
 		FindInDirectory(Dir);
-	} while (FoldersToSearch.size() > 0);
+	} while (FStack.Size > 0);
 }
 
 void ProcessFile(char* fileName, char* filePath, unsigned fileSize)

@@ -6,6 +6,24 @@ struct StringBuffer
 	int Size;
 };
 
+struct StringPool
+{
+	char* Data;
+	int Cursor;
+	int Size;
+};
+
+int PoolFreeSpace(StringPool* Pool);
+
+struct CStr
+{
+	char* Data;
+	int Size;
+};
+
+CStr AllocString(int Size);
+void FreeString(CStr Str);
+
 char ToLower(char c);
 char* ToLower(char* str);
 int StringSize(const char* str);

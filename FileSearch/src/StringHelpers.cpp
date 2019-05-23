@@ -1,6 +1,28 @@
 
 #include "StringHelpers.h"
 
+StringPool Pool;
+
+int PoolFreeSpace(StringPool* Pool)
+{
+	return (Pool->Size - Pool->Cursor);
+}
+
+CStr AllocString(int Size)
+{
+	CStr Result = {};
+
+	
+
+	return Result;
+}
+
+void FreeString(CStr Str)
+{
+
+}
+
+
 char ToLower(char c)
 {
 	char result = c;

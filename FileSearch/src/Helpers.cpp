@@ -153,7 +153,7 @@ void DeleteFolderNode(FolderNode* node)
 	delete node;
 }
 
-void PushFolder(FolderQueue* queue, char* name)
+void PushFolder(FolderStack* queue, char* name)
 {
 	if (!queue->Head)
 	{
@@ -168,7 +168,7 @@ void PushFolder(FolderQueue* queue, char* name)
 	queue->Size++;
 }
 
-char* PopFolder(FolderQueue* queue)
+char* PopFolder(FolderStack* queue)
 {
 	if (!queue->Head) return 0;
 	FolderNode* ResultNode = queue->Head;

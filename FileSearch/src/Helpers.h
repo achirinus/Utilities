@@ -50,20 +50,26 @@ struct FolderNode
 	FolderNode* Next;
 };
 
-struct FolderQueue
+struct FolderStack
 {
 	FolderNode* Head;
 	int Size;
 };
 
+struct FilesIndexRange
+{
+	int Begin;
+	int End;
+};
+
 FolderNode* CreateFolderNode(char* name);
 void DeleteFolderNode(FolderNode* node);
-void PushFolder(FolderQueue* queue, char* name);
-char* PopFolder(FolderQueue* queue);
+void PushFolder(FolderStack* queue, char* name);
+char* PopFolder(FolderStack* queue);
 
 //Defined in main
-void GetAllFilesInDir();
 void SearchFiles();
+void SearchFilesRange(FilesIndexRange range);
 void ReadProgramProperties(char* argv[], int argc);
 void FindAllFiles();
 void ProcessFile(char* fileName, char* filePath, unsigned fileSize);
