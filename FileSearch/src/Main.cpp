@@ -12,7 +12,7 @@ std::vector<FileData> Files;
 
 std::vector<std::thread> Threads;
 std::mutex OutputMutex;
-
+HANDLE Console;
 ProgramSettings Settings;
 
 int main(int argc, char* argv[])
@@ -26,6 +26,10 @@ int main(int argc, char* argv[])
 	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
 #endif
 	if (Settings.ShowInfo) printf("Searching in: %s\n", StartingWorkingDir);
+
+	Console = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	int index = FindString("\\Source\\RestLib\\CMakeLists.txt(20): elseif (ANDROID)", "ANDROID");
 
 	BeginCounter();
 	FindAllFiles();
@@ -160,11 +164,6 @@ void SearchFilesRange(FilesIndexRange range)
 
 			if (char* BeginOfSearchString = strstr(temp, Settings.SearchTerm))
 			{
-				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-				CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-				GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-				WORD currentColor = consoleInfo.wAttributes;
-
 				char lineToString[MAX_LINE_BUFFER_LENGTH];
 				strncpy_s(lineToString, temp, BeginOfSearchString - temp);
 				char lineFromString[MAX_LINE_BUFFER_LENGTH];
@@ -178,16 +177,24 @@ void SearchFilesRange(FilesIndexRange range)
 				{
 					filename = GetRelativePath(StartingWorkingDir, names.AbsPath);
 				}
-				std::lock_guard<std::mutex> lock(OutputMutex);
+				
+				OutputMutex.lock();
+
+				
+				CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+				GetConsoleScreenBufferInfo(Console, &consoleInfo);
+				WORD currentColor = consoleInfo.wAttributes;
+
 				printf("%s(%d): ", filename, LineNumber);
 				printf("%s", lineToString);
-				SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
+				SetConsoleTextAttribute(Console, FOREGROUND_GREEN);
 
 				printf("%s", Settings.SearchTerm);
 
-				SetConsoleTextAttribute(hConsole, currentColor);
+				SetConsoleTextAttribute(Console, currentColor);
 
 				printf("%s\n", lineFromString);
+				OutputMutex.unlock();
 			}
 			LineNumber++;
 			delete[] Line;

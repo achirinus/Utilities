@@ -304,7 +304,7 @@ char* ReadStringLine(char** str)
 	for (int index = 0;; index++)
 	{
 		char At = tempStr[index];
-		if (At == '\r' || At == '\n' || At == 0)
+		if (At == '\r' || At == '\n')
 		{
 			finalIndex = index;
 			char* nextLine = tempStr + index;
@@ -315,9 +315,15 @@ char* ReadStringLine(char** str)
 			*str = nextLine;
 			break;
 		}
+		else if (At == 0)
+		{
+			finalIndex = index;
+			*str = 0;
+			break;
+		}
 	}
 	char* result = 0;
-	if (finalIndex) result = Substring(tempStr, 0, finalIndex);
+	result = Substring(tempStr, 0, finalIndex);
 	return result;
 }
 
