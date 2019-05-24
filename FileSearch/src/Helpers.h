@@ -8,6 +8,7 @@
 #include "StringHelpers.h"
 
 #define MAX_LINE_BUFFER_LENGTH 512
+#define MAX_FILE_NAME_LENGTH 128
 #define SUPPORTED_OPTIONS 20 //Just make sure this is way bigger than number of options
 
 extern const char* HelpText;

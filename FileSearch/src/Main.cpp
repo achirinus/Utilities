@@ -100,9 +100,9 @@ void SearchFilesRange(FilesIndexRange range)
 		
 		do
 		{
-			char TempLine[MAX_LINE_BUFFER_LENGTH + 1];
+			char TempLine[MAX_LINE_BUFFER_LENGTH];
 			char* Line = ReadStringLine(&TempCont, TempLine);
-			char temp[MAX_LINE_BUFFER_LENGTH + 1];
+			char temp[MAX_LINE_BUFFER_LENGTH];
 			int count = StringSize(Line);
 
 			if (count <= Settings.OutputLineLength)
@@ -298,8 +298,8 @@ void FindInDirectory(char* Dir)
 		{
 			continue;
 		}
-
-		char* filePath = StringConcat(currentDir, CurrentFileData.cFileName);
+		char FilePathStorage[MAX_LINE_BUFFER_LENGTH];
+		char* filePath = StringConcat(currentDir, CurrentFileData.cFileName, FilePathStorage);
 
 		if (CurrentFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
@@ -309,7 +309,6 @@ void FindInDirectory(char* Dir)
 		{
 			ProcessFile(StringCopy(CurrentFileData.cFileName), StringCopy(filePath), CurrentFileData.nFileSizeLow);
 		}
-		delete[] filePath;
 	}
 	delete[] currentDir;
 	delete[] findDir;
@@ -335,8 +334,8 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 	for (int i = 0; i < Settings.FilesToInclude.Size; i++)
 	{
 		char* FileSugested = Settings.FilesToInclude.Strings[i];
-		char TempSugestedName[1024];
-		char TempFileName[1024];
+		char TempSugestedName[MAX_LINE_BUFFER_LENGTH];
+		char TempFileName[MAX_FILE_NAME_LENGTH];
 		strcpy_s(TempSugestedName, FileSugested);
 		strcpy_s(TempFileName, fileName);
 
@@ -360,7 +359,7 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 		}
 		else if (postWildCardIndex > 0)
 		{
-			char TempMem[512];
+			char TempMem[MAX_LINE_BUFFER_LENGTH];
 			char* beforeWildCard = Substring(TempSugestedName, TempMem, 0, StringSize(TempSugestedName) - 1);
 			int foundIndex = FindString(LoweredTempFile, beforeWildCard);
 			if (foundIndex >= 0)
@@ -382,8 +381,8 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 	for (int i = 0; i < Settings.FilesToExclude.Size; i++)
 	{
 		char* FileSugested = Settings.FilesToExclude.Strings[i];
-		char TempSugestedName[1024];
-		char TempFileName[1024];
+		char TempSugestedName[MAX_LINE_BUFFER_LENGTH];
+		char TempFileName[MAX_LINE_BUFFER_LENGTH];
 		strcpy_s(TempSugestedName, FileSugested);
 		strcpy_s(TempFileName, fileName);
 
@@ -403,8 +402,8 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 		}
 		else if (postWildCardIndex > 0)
 		{
-			char TempMem[512];
-			char* beforeWildCard = Substring(TempSugestedName,TempMem, 0, StringSize(TempSugestedName) - 1);
+			char TempMem[MAX_LINE_BUFFER_LENGTH];
+			char* beforeWildCard = Substring(TempSugestedName, TempMem, 0, StringSize(TempSugestedName) - 1);
 			int foundIndex = FindString(LoweredTempFile, beforeWildCard);
 			if (foundIndex >= 0)
 			{
