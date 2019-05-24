@@ -180,7 +180,6 @@ void SearchFilesRange(FilesIndexRange range)
 				
 				OutputMutex.lock();
 
-				
 				CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
 				GetConsoleScreenBufferInfo(Console, &consoleInfo);
 				WORD currentColor = consoleInfo.wAttributes;
@@ -209,124 +208,7 @@ void SearchFilesRange(FilesIndexRange range)
 
 void SearchFiles()
 {
-	for (FileData& names : Files)
-	{
-		FILE* pFile = 0;
-		fopen_s(&pFile, names.AbsPath, "rb");
-		if (pFile == nullptr) continue;
-		if (names.Size == 0) continue;
-		char* Contents = new char[names.Size + 1];
-		
-		char* TempCont = Contents;
-		fread(Contents, 1, names.Size, pFile);
-		Contents[names.Size] = 0;
-		int LineNumber = 1;
-		int SearchTermSize = StringSize(Settings.SearchTerm);
-		bool ShouldBreak = false;
-		char* Line = ReadStringLine(&TempCont);
-		while (Line)
-		{
-			char temp[MAX_LINE_BUFFER_LENGTH + 1];
-			int count = StringSize(Line);
-
-			if (count <= Settings.OutputLineLength)
-			{
-				strncpy_s(temp, Line, count);
-			}
-			else
-			{
-				//TODO this is not safe, those numbers can be <=0
-				int AvailableCharCount = Settings.OutputLineLength - SearchTermSize - 7;
-				int NumberOfSideChars = AvailableCharCount / 2;
-				int FoundIndex = FindString(Line, Settings.SearchTerm);
-				
-				if (FoundIndex >= 0)
-				{
-					char* BeginOfSearchString = Line + FoundIndex;
-					int NumOfCharsBeforeTerm = BeginOfSearchString - Line;
-					int NumOfCharsAfterTerm = (Line + count) - (BeginOfSearchString + SearchTermSize);
-
-					bool PreDotsRequired = false;
-					bool PostDotsRequired = false;
-
-					if (NumOfCharsBeforeTerm > NumberOfSideChars)
-					{
-						PreDotsRequired = true;
-						NumOfCharsBeforeTerm = NumberOfSideChars;
-					}
-					if (NumOfCharsAfterTerm > NumberOfSideChars)
-					{
-						PostDotsRequired = true;
-						NumOfCharsAfterTerm = NumberOfSideChars;
-					}
-					std::string tempStr;
-
-					if (PreDotsRequired)
-					{
-						tempStr += "...";
-					}
-					char* StartOfPre = BeginOfSearchString - NumOfCharsBeforeTerm;
-					for (int i = 0; i < NumOfCharsBeforeTerm; i++)
-					{
-						tempStr += StartOfPre[i];
-					}
-
-					tempStr += Settings.SearchTerm;
-
-					char* StartOfAfter = BeginOfSearchString + SearchTermSize;
-					for (int i = 0; i < NumOfCharsAfterTerm; i++)
-					{
-						tempStr += StartOfAfter[i];
-					}
-
-					if (PostDotsRequired)
-					{
-						tempStr += "...";
-					}
-
-					strncpy_s(temp, tempStr.c_str(), tempStr.size() + 1);
-				}
-			}
-
-			if (char* BeginOfSearchString = strstr(temp, Settings.SearchTerm))
-			{
-				HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-				CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-				GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-				WORD currentColor = consoleInfo.wAttributes;
-
-				char lineToString[MAX_LINE_BUFFER_LENGTH];
-				strncpy_s(lineToString, temp, BeginOfSearchString - temp);
-				char lineFromString[MAX_LINE_BUFFER_LENGTH];
-
-				int SearchLen = StringSize(Settings.SearchTerm);
-				char* EndOfSearch = BeginOfSearchString + SearchLen;
-
-				strcpy_s(lineFromString, EndOfSearch);
-				char* filename = names.FileName;
-				if (Settings.LongFilename)
-				{
-					filename = GetRelativePath(StartingWorkingDir, names.AbsPath);
-				}
-				printf("%s(%d): ", filename, LineNumber);
-				printf("%s", lineToString);
-				SetConsoleTextAttribute(hConsole, FOREGROUND_GREEN);
-
-				printf("%s", Settings.SearchTerm);
-
-				SetConsoleTextAttribute(hConsole, currentColor);
-
-				printf("%s\n", lineFromString);
-			}
-			LineNumber++;
-			delete[] Line;
-			Line = 0;
-			Line = ReadStringLine(&TempCont);
-		}
-
-		delete[] Contents;
-		fclose(pFile);
-	}
+	SearchFilesRange({ 0, (int)Files.size() - 1});
 }
 
 void ReadProgramProperties(char* argv[], int argc)
