@@ -100,11 +100,14 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;GLEW_STATIC</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)libs\glfw\include;$(ProjectDir)libs\imgui;$(ProjectDir)libs\glew\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)libs\imgui;$(ProjectDir)libs\glfw\lib;$(ProjectDir)libs\glew\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -132,22 +135,27 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;GLEW_STATIC</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)libs\glfw\include;$(ProjectDir)libs\imgui;$(ProjectDir)libs\glew\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>glfw3.lib;glew32s.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)libs\imgui;$(ProjectDir)libs\glfw\lib;$(ProjectDir)libs\glew\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Helpers.cpp" />
     <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\Search.cpp" />
     <ClCompile Include="src\StringHelpers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Helpers.h" />
+    <ClInclude Include="src\Search.h" />
     <ClInclude Include="src\StringHelpers.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,16 +1,21 @@
 #pragma once
+
 #include <Windows.h>
 #include <cstdio>
 #include <cstring>
 #include <vector>
 #include <ctype.h>
 #include <cstdio>
+#include <thread>
+#include <mutex>
 #include "StringHelpers.h"
 
-#define MAX_LINE_BUFFER_LENGTH 512
+
 #define SUPPORTED_OPTIONS 20 //Just make sure this is way bigger than number of options
 
 extern const char* HelpText;
+
+extern char StartingWorkingDir[MAX_PATH];
 
 struct FileData
 {
@@ -18,6 +23,8 @@ struct FileData
 	char* AbsPath;
 	unsigned Size;
 };
+
+extern std::vector<FileData> Files;
 
 struct ProgramOption
 {
@@ -44,6 +51,8 @@ struct ProgramSettings
 	bool LongFilename;
 };
 
+extern ProgramSettings Settings;
+
 struct FolderNode
 {
 	char* Data;
@@ -68,14 +77,10 @@ void PushFolder(FolderStack* queue, char* name);
 char* PopFolder(FolderStack* queue);
 
 //Defined in main
-void SearchFiles();
-void SearchFilesRange(FilesIndexRange range);
+
 void ReadProgramProperties(char* argv[], int argc);
-void FindAllFiles();
-void ProcessFile(char* fileName, char* filePath, unsigned fileSize);
+
 //-----
-
-
 void BeginCounter();
 int EndCounter();
 void TerminateError(char* mes, ...);
@@ -86,5 +91,3 @@ char* GetExePath();
 int GetIntValue(char* source, char* var);
 bool GetBoolValueWithOptions(char* source, char* var, char* trueOpt, char* falseOpt);
 bool GetBoolValue(char* source, char* var);
-
-

@@ -24,12 +24,18 @@
     <ClCompile Include="src\StringHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Search.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Helpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\StringHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Search.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
