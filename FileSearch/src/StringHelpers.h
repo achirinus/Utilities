@@ -28,7 +28,7 @@ char ToLower(char c);
 char* ToLower(char* str);
 int StringSize(const char* str);
 bool BeginsWith(const char* str, const char* with);
-char* Substring(char* source, char* dest = 0, int startPos = 0, int count = 0);
+char* Substring(char* source, int startPos = 0, int count = 0);
 int StringCopy(const char* from, char* dest);
 char* StringCopy(const char* from);
 char* StringConcat(const char* first, const char* second, char* dest = 0);
@@ -42,7 +42,7 @@ char* FindMatchingClosingChar(char* str, char open, char close, bool canStack = 
 
 char* CopyString(char* str);
 StringBuffer BreakStringByToken(char* str, char token);
-char* ReadStringLine(char** str, char* mem = 0);
+char* ReadStringLine(char** str);
 bool StartsWith(char* baseStr, char* str);
 char* SkipString(char* baseStr, char* str);
 bool IsDigit(char c);

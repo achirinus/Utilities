@@ -55,7 +55,7 @@ bool BeginsWith(const char* str, const char* with)
 	return FindString(str, with) == 0;
 }
 
-char* Substring(char* source, char* dest, int startPos, int count)
+char* Substring(char* source, int startPos, int count)
 {
 	char* result = 0;
 	int sourceLen = StringSize(source);
@@ -63,15 +63,7 @@ char* Substring(char* source, char* dest, int startPos, int count)
 	//if (count == 0) count = sourceLen - startPos;
 	if (sourceLen < (startPos + count)) count = sourceLen - startPos;
 
-	if (dest)
-	{
-		result = dest;
-	}
-	else
-	{
-		result = new char[count + 1];
-	}
-	
+	result = new char[count + 1];
 	int i = 0;
 	for (; i < count; i++)
 	{
@@ -280,11 +272,11 @@ StringBuffer BreakStringByToken(char* str, char token)
 			{
 				int count = index - lastTokenIndex - 1;
 
-				result.Strings[result.Size++] = Substring(tempStr, nullptr, lastTokenIndex + 1, count);
+				result.Strings[result.Size++] = Substring(tempStr, lastTokenIndex + 1, count);
 			}
 			else
 			{
-				result.Strings[result.Size++] = Substring(tempStr, nullptr, 0, index);
+				result.Strings[result.Size++] = Substring(tempStr, 0, index);
 			}
 			lastTokenIndex = index;
 			tokenExists = true;
@@ -293,7 +285,7 @@ StringBuffer BreakStringByToken(char* str, char token)
 	}
 	if (tokenExists && (index > lastTokenIndex))
 	{
-		result.Strings[result.Size++] = Substring(tempStr, nullptr, lastTokenIndex + 1, index - lastTokenIndex - 1);
+		result.Strings[result.Size++] = Substring(tempStr, lastTokenIndex + 1, index - lastTokenIndex - 1);
 	}
 	else
 	{
@@ -303,7 +295,7 @@ StringBuffer BreakStringByToken(char* str, char token)
 }
 
 
-char* ReadStringLine(char** str, char* mem)
+char* ReadStringLine(char** str)
 {
 	if (!str) return 0;
 	if (!*str)return 0;
@@ -331,7 +323,7 @@ char* ReadStringLine(char** str, char* mem)
 		}
 	}
 	char* result = 0;
-	result = Substring(tempStr, mem, 0, finalIndex);
+	result = Substring(tempStr, 0, finalIndex);
 	return result;
 }
 
