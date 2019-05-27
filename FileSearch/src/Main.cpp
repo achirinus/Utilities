@@ -97,16 +97,12 @@ void SearchFilesRange(FilesIndexRange range)
 		int LineNumber = 1;
 		int SearchTermSize = StringSize(Settings.SearchTerm);
 		bool ShouldBreak = false;
-		char* Line = ReadStringLine(&TempCont);
-		while (Line)
+		
+		do
 		{
-<<<<<<< HEAD
 			char TempLine[MAX_LINE_BUFFER_LENGTH];
 			char* Line = ReadStringLine(&TempCont, TempLine);
 			char temp[MAX_LINE_BUFFER_LENGTH];
-=======
-			char temp[MAX_LINE_BUFFER_LENGTH + 1];
->>>>>>> parent of 32dff43... Removed some dynamic allocation
 			int count = StringSize(Line);
 
 			if (count <= Settings.OutputLineLength)
@@ -183,7 +179,7 @@ void SearchFilesRange(FilesIndexRange range)
 				{
 					filename = GetRelativePath(StartingWorkingDir, names.AbsPath);
 				}
-				
+
 				OutputMutex.lock();
 
 				CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
@@ -202,10 +198,11 @@ void SearchFilesRange(FilesIndexRange range)
 				OutputMutex.unlock();
 			}
 			LineNumber++;
-			delete[] Line;
-			Line = 0;
+			
 			Line = ReadStringLine(&TempCont);
 		}
+		while (TempCont);
+		
 
 		delete[] Contents;
 		fclose(pFile);
@@ -362,14 +359,9 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 		}
 		else if (postWildCardIndex > 0)
 		{
-<<<<<<< HEAD
 			char TempMem[MAX_LINE_BUFFER_LENGTH];
 			char* beforeWildCard = Substring(TempSugestedName, TempMem, 0, StringSize(TempSugestedName) - 1);
-=======
-			char* beforeWildCard = Substring(TempSugestedName, 0, StringSize(TempSugestedName) - 1);
->>>>>>> parent of 32dff43... Removed some dynamic allocation
 			int foundIndex = FindString(LoweredTempFile, beforeWildCard);
-			delete[] beforeWildCard;
 			if (foundIndex >= 0)
 			{
 				ShouldProcess = true;
@@ -410,14 +402,9 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 		}
 		else if (postWildCardIndex > 0)
 		{
-<<<<<<< HEAD
 			char TempMem[MAX_LINE_BUFFER_LENGTH];
 			char* beforeWildCard = Substring(TempSugestedName, TempMem, 0, StringSize(TempSugestedName) - 1);
-=======
-			char* beforeWildCard = Substring(TempSugestedName, 0, StringSize(TempSugestedName) - 1);
->>>>>>> parent of 32dff43... Removed some dynamic allocation
 			int foundIndex = FindString(LoweredTempFile, beforeWildCard);
-			delete[] beforeWildCard;
 			if (foundIndex >= 0)
 			{
 				ShouldProcess = false;

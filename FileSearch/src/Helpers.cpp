@@ -99,7 +99,7 @@ char* GetRelativePath(const char* cwd, const char* absPath)
 char* GetLastDirPath(char* src)
 {
 	int LastSlashIndex = FindLastString(src, "\\");
-	return Substring(src, 0, LastSlashIndex);
+	return Substring(src, nullptr, 0, LastSlashIndex);
 }
 
 char* GetExePath()
