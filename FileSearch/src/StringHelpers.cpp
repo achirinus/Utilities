@@ -255,6 +255,11 @@ char* CopyString(char* str)
 	return result;
 }
 
+void CopyString(char* from, char* to)
+{
+	while (*to++ = *from++);
+}
+
 StringBuffer BreakStringByToken(char* str, char token)
 {
 	StringBuffer result = {};

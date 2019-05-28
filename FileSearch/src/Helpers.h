@@ -40,7 +40,8 @@ struct OptionBuffer
 
 struct ProgramSettings
 {
-	char* SearchTerm;
+	char SearchDirectory[MAX_PATH];
+	char SearchTerm[MAX_PATH];
 	StringBuffer FilesToInclude;
 	StringBuffer FilesToExclude;
 	int NumberOfThreads;

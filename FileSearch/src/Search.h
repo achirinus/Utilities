@@ -4,6 +4,15 @@
 
 
 extern HANDLE Console;
+extern std::mutex SettingsMutex;
+struct SearchResult
+{
+	int LineNumber;
+	char* FirstPart;
+	char* ThirdPart;
+};
+typedef std::vector<SearchResult> ResultVector;
+extern std::map<char*, ResultVector> SearchResults;
 
 void FindInDirectory(char* Dir);
 void SearchFiles();

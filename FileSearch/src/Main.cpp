@@ -8,32 +8,42 @@
 #include "GLFW/glfw3.h"
 
 #define FILES_PER_THREAD 20
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
+
 #define WINDOW_TITLE "FileSearch"
 
 char StartingWorkingDir[MAX_PATH];
+char FileNames[10][MAX_PATH];
+
 std::vector<FileData> Files;
 std::vector<std::thread> Threads;
+std::map<char*, ResultVector> SearchResults;
+
 HANDLE Console;
 ProgramSettings Settings;
+
+int WindowWidth = 1280;
+int WindowHeight = 720;
 
 void glfw_err(int err, const char* desc)
 {
 	printf("GLFW err code: %d : %s", err, desc);
 }
 
+void glfw_resize(GLFWwindow* window, int width, int height)
+{
+	WindowWidth = width;
+	WindowHeight = height;
+}
+
+int ImGui_SearchPathCallback(ImGuiInputTextCallbackData *data)
+{
+	FindAllFiles();
+	return 1;
+}
+
 int main(int argc, char* argv[])
 {
-	ReadProgramProperties(argv, argc);
-#ifdef _DEBUG
-	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate4\\externals\\engine");
-	SetCurrentDirectoryA(StartingWorkingDir);
-#else
-	if (argc < 2) return 1;
-	GetCurrentDirectoryA(MAX_PATH, StartingWorkingDir);
-#endif
-	
+
 	if (!glfwInit())
 	{
 		printf("GLFW Init Failed!");
@@ -47,7 +57,7 @@ int main(int argc, char* argv[])
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 
-	GLFWwindow* window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WindowWidth, WindowHeight, WINDOW_TITLE, nullptr, nullptr);
 	if (!window)
 	{
 		printf("GLFW window or context creation failed");
@@ -55,6 +65,7 @@ int main(int argc, char* argv[])
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(1);
 
+	glfwSetWindowSizeCallback(window, glfw_resize);
 	GLenum glewErr = glewInit();
 	if (GLEW_OK != glewErr)
 	{
@@ -70,12 +81,13 @@ int main(int argc, char* argv[])
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
+	
+	int FileNameNum = 0;
 
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-
+		SettingsMutex.lock();
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
@@ -83,22 +95,85 @@ int main(int argc, char* argv[])
 		{
 			static float f = 0.0f;
 			static int counter = 0;
+			ImGui::SetNextWindowSize({ (float)WindowWidth, (float)WindowHeight}, ImGuiCond_Always);
+			ImGui::SetNextWindowPos({0.f, 0.f}, ImGuiCond_Always);
+			ImGui::Begin("Hello, world!", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize);
 
-			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+			if (ImGui::BeginMenuBar())
+			{
+				if (ImGui::BeginMenu("File"))
+				{
+					if (ImGui::MenuItem("Open", "Ctrl+O"))
+					{ /* Do stuff */ 
 
-			ImGui::Text("This is some useful text.");
-			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-			ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+					}
+					ImGui::EndMenu();
+				}
+				ImGui::EndMenuBar();
+			}
 
-			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-				counter++;
+			ImGui::BeginChild("Search Input", { (float)(WindowWidth / 2), (float)(WindowHeight / 100 * 30) }, false, ImGuiWindowFlags_NoDecoration);
+
+			ImGui::Text("Search path:");
 			ImGui::SameLine();
-			ImGui::Text("counter = %d", counter);
+			ImGui::SetNextItemWidth((float)(WindowWidth / 100 * 40));
+			ImGui::InputText("##Search path", Settings.SearchDirectory, sizeof(Settings.SearchDirectory), ImGuiInputTextFlags_CallbackCompletion, ImGui_SearchPathCallback);
 
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::Text("Search term:");
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth((float)(WindowWidth / 100 * 40));
+			ImGui::InputText("##Search term", Settings.SearchTerm, sizeof(Settings.SearchTerm), ImGuiInputTextFlags_None);
+
+			ImGui::Text("File name:");
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth((float)(WindowWidth / 100 * 20));
+			ImGui::InputText("##File name", FileNames[FileNameNum], sizeof(FileNames[FileNameNum]), ImGuiInputTextFlags_None);
+			ImGui::SameLine();
+			if (ImGui::Button("Add"))
+			{
+				FileNameNum++;
+			}
+			
+			ImGui::EndChild();
+			ImGui::SameLine();
+			ImGui::BeginChild("Search List", { (float)(WindowWidth / 2), (float)(WindowHeight / 100 * 30) }, false, ImGuiWindowFlags_NoDecoration);
+			
+			for (int i = 0; i < FileNameNum; i++)
+			{
+				ImGui::Text(FileNames[i]);
+				ImGui::SameLine();
+				if (ImGui::Button("Remove"))
+				{
+					if (FileNameNum > 0) FileNameNum--;
+				}
+			}
+			ImGui::EndChild();
+
+			ImGui::BeginChild("Results", { (float)WindowWidth, (float)(WindowHeight * 0.7f) });
+			for (auto it = SearchResults.begin(); it != SearchResults.end(); ++it)
+			{
+				char* FileName = it->first;
+				ResultVector& Result = it->second;
+				if (ImGui::CollapsingHeader(FileName))
+				{
+					for (auto vectorIt = Result.begin(); vectorIt != Result.end(); vectorIt++)
+					{
+						SearchResult& SearchRes = *vectorIt;
+
+						ImGui::Text("(%d):", SearchRes.LineNumber);
+						ImGui::SameLine();
+						ImGui::Text(SearchRes.FirstPart);
+						ImGui::SameLine(0.f, 0.f);
+						ImGui::TextColored({ 0.1f, 1.f, 0.1f, 1.f }, Settings.SearchTerm);
+						ImGui::SameLine(0.f, 0.f);
+						ImGui::Text(SearchRes.ThirdPart);
+					}
+				}
+			}
+			ImGui::EndChild();
 			ImGui::End();
 		}
-
+		SettingsMutex.unlock();
 		ImGui::Render();
 		int display_w, display_h;
 		glfwMakeContextCurrent(window);
@@ -133,10 +208,10 @@ void ConsoleSearchFiles()
 	int GetFilesDuration = EndCounter();
 
 	if (Settings.ShowTimes) printf("File gather duration: %dms\n", GetFilesDuration);
-	if (Settings.ShowStats) printf("Found %d files.\n", Files.size());
+	if (Settings.ShowStats) printf("Found %zd files.\n", Files.size());
 
 	BeginCounter();
-	int NumOfFiles = Files.size();
+	int NumOfFiles = (int)Files.size();
 
 	if ((NumOfFiles > 20) && Settings.NumberOfThreads)
 	{
@@ -239,7 +314,6 @@ void ReadProgramProperties(char* argv[], int argc)
 		while (line);
 	}
 
-	Settings.SearchTerm = argv[1];
 	for (int i = 2; i < argc; i++)
 	{
 		StringBuffer& buf = Settings.FilesToInclude;

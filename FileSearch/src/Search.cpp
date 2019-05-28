@@ -2,6 +2,7 @@
 #include "Helpers.h"
 
 std::mutex OutputMutex;
+std::mutex SettingsMutex;
 
 #define MAX_LINE_BUFFER_LENGTH 512
 
@@ -106,7 +107,7 @@ void SearchFilesRange(FilesIndexRange range)
 				}
 
 				OutputMutex.lock();
-
+				/*
 				CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
 				GetConsoleScreenBufferInfo(Console, &consoleInfo);
 				WORD currentColor = consoleInfo.wAttributes;
@@ -120,6 +121,9 @@ void SearchFilesRange(FilesIndexRange range)
 				SetConsoleTextAttribute(Console, currentColor);
 
 				printf("%s\n", lineFromString);
+				*/
+				SearchResults[StringCopy(filename)].push_back({ LineNumber, StringCopy(lineToString), StringCopy(lineFromString) });
+
 				OutputMutex.unlock();
 			}
 			LineNumber++;
@@ -139,7 +143,7 @@ void SearchFiles()
 }
 void FindAllFiles()
 {
-	PushFolder(&FStack, StartingWorkingDir);
+	PushFolder(&FStack, Settings.SearchDirectory);
 
 	do
 	{
@@ -151,6 +155,7 @@ void FindAllFiles()
 void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 {
 	bool ShouldProcess = true;
+	SettingsMutex.lock();
 	if (Settings.FilesToInclude.Size) ShouldProcess = false;
 
 	for (int i = 0; i < Settings.FilesToInclude.Size; i++)
@@ -246,6 +251,7 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 	{
 		Files.push_back({ fileName, filePath, fileSize });
 	}
+	SettingsMutex.unlock();
 }
 
 

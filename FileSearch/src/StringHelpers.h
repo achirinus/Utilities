@@ -41,6 +41,7 @@ int FindLastString(const char* source, const char* strToFind);
 char* FindMatchingClosingChar(char* str, char open, char close, bool canStack = false);
 
 char* CopyString(char* str);
+void CopyString(char* from, char* to);
 StringBuffer BreakStringByToken(char* str, char token);
 char* ReadStringLine(char** str);
 bool StartsWith(char* baseStr, char* str);
