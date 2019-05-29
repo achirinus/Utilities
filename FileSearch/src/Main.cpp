@@ -13,6 +13,7 @@
 
 char StartingWorkingDir[MAX_PATH];
 char FileNames[10][MAX_PATH];
+char FileNameRegex[128];
 
 std::vector<FileData> Files;
 std::vector<std::thread> Threads;
@@ -20,6 +21,8 @@ std::map<char*, ResultVector> SearchResults;
 
 HANDLE Console;
 ProgramSettings Settings;
+
+std::thread FindFilesThread;
 
 int WindowWidth = 1280;
 int WindowHeight = 720;
@@ -37,7 +40,8 @@ void glfw_resize(GLFWwindow* window, int width, int height)
 
 int ImGui_SearchPathCallback(ImGuiInputTextCallbackData *data)
 {
-	FindAllFiles();
+	Files.clear();
+	FindFilesThread = std::thread(FindAllFiles);
 	return 1;
 }
 
@@ -127,27 +131,41 @@ int main(int argc, char* argv[])
 			ImGui::Text("File name:");
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth((float)(WindowWidth / 100 * 20));
-			ImGui::InputText("##File name", FileNames[FileNameNum], sizeof(FileNames[FileNameNum]), ImGuiInputTextFlags_None);
+			ImGui::InputText("##File name", FileNameRegex, sizeof(FileNameRegex), ImGuiInputTextFlags_None);
 			ImGui::SameLine();
 			if (ImGui::Button("Add"))
 			{
-				FileNameNum++;
+				if (StringSize(FileNameRegex))
+				{
+					AddString(&Settings.FilesToInclude, FileNameRegex);
+					ClearString(FileNameRegex);
+				}
 			}
 			
+			ImGui::Separator();
+			FilesMutex.lock();
+			ImGui::Text("Eligible files found: %d", Files.size());
+			FilesMutex.unlock();
+
 			ImGui::EndChild();
 			ImGui::SameLine();
 			ImGui::BeginChild("Search List", { (float)(WindowWidth / 2), (float)(WindowHeight / 100 * 30) }, false, ImGuiWindowFlags_NoDecoration);
 			
-			for (int i = 0; i < FileNameNum; i++)
+			for (int i = 0; i < STR_BUF_SIZE; i++)
 			{
-				ImGui::Text(FileNames[i]);
-				ImGui::SameLine();
-				if (ImGui::Button("Remove"))
+				char* Temp = Settings.FilesToInclude.Strings[i];
+				if (Temp)
 				{
-					if (FileNameNum > 0) FileNameNum--;
+					if (ImGui::Button(Temp))
+					{
+						RemoveString(&Settings.FilesToInclude, Temp);
+					}
 				}
 			}
+			
 			ImGui::EndChild();
+
+			ImGui::Separator();
 
 			ImGui::BeginChild("Results", { (float)WindowWidth, (float)(WindowHeight * 0.7f) });
 			for (auto it = SearchResults.begin(); it != SearchResults.end(); ++it)
@@ -194,6 +212,11 @@ int main(int argc, char* argv[])
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
+
+	if (FindFilesThread.joinable())
+	{
+		FindFilesThread.join();
+	}
 	return 0;
 }
 

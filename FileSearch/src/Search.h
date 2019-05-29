@@ -5,6 +5,7 @@
 
 extern HANDLE Console;
 extern std::mutex SettingsMutex;
+extern std::mutex FilesMutex;
 struct SearchResult
 {
 	int LineNumber;

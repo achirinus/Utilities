@@ -3,6 +3,8 @@
 
 StringPool Pool;
 
+
+
 int PoolFreeSpace(StringPool* Pool)
 {
 	return (Pool->Size - Pool->Cursor);
@@ -20,6 +22,32 @@ CStr AllocString(int Size)
 void FreeString(CStr Str)
 {
 
+}
+
+
+void AddString(StringBuffer* buf, char* str)
+{
+	for (int i = 0; i < STR_BUF_SIZE; i++)
+	{
+		char*& Temp = buf->Strings[i];
+		if (!Temp)
+		{
+			Temp = StringCopy(str);
+			break;
+		}
+	}
+}
+void RemoveString(StringBuffer* buf, char* str)
+{
+	for (int i = 0; i < STR_BUF_SIZE; i++)
+	{
+		char*& Temp = buf->Strings[i];
+		if (StringCompare(str, Temp))
+		{
+			delete[] Temp;
+			Temp = 0;
+		}
+	}
 }
 
 
@@ -53,6 +81,14 @@ int StringSize(const char* str)
 bool BeginsWith(const char* str, const char* with)
 {
 	return FindString(str, with) == 0;
+}
+
+bool EndsWith(const char* str, const char* with)
+{
+	int FoundIndex = FindString(str, with);
+	int WithSize = StringSize(with);
+	int StrSize = StringSize(str);
+	return FoundIndex == (StrSize - WithSize);
 }
 
 char* Substring(char* source, int startPos, int count)
@@ -403,4 +439,10 @@ bool StringCompare(char* first, char* second)
 		if (*first++ != *second++) return false;
 	}
 	return true;
+}
+
+void ClearString(char* str)
+{
+	if (!str) return;
+	while (*str) *str = 0;
 }

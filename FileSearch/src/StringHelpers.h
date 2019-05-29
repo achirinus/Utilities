@@ -1,10 +1,16 @@
 #pragma once
 
+
+#define STR_BUF_SIZE 25
+
 struct StringBuffer
 {
-	char* Strings[50];
+	char* Strings[STR_BUF_SIZE];
 	int Size;
 };
+
+void AddString(StringBuffer* buf, char* str);
+void RemoveString(StringBuffer* buf, char* str);
 
 struct StringPool
 {
@@ -28,6 +34,7 @@ char ToLower(char c);
 char* ToLower(char* str);
 int StringSize(const char* str);
 bool BeginsWith(const char* str, const char* with);
+bool EndsWith(const char* str, const char* with);
 char* Substring(char* source, int startPos = 0, int count = 0);
 int StringCopy(const char* from, char* dest);
 char* StringCopy(const char* from);
@@ -51,3 +58,4 @@ int ToDigit(char c);
 int ToPower(int base, int pow);
 int StringToInt(char* str);
 bool StringCompare(char* first, char* second);
+void ClearString(char* str);

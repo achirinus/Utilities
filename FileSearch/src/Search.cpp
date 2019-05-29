@@ -3,6 +3,7 @@
 
 std::mutex OutputMutex;
 std::mutex SettingsMutex;
+std::mutex FilesMutex;
 
 #define MAX_LINE_BUFFER_LENGTH 512
 
@@ -155,12 +156,22 @@ void FindAllFiles()
 void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 {
 	bool ShouldProcess = true;
-	SettingsMutex.lock();
-	if (Settings.FilesToInclude.Size) ShouldProcess = false;
+	
+	for (int i = 0; i < STR_BUF_SIZE; i++)
+	{
+		char* Temp = Settings.FilesToInclude.Strings[i];
+		if (Temp)
+		{
+			ShouldProcess = false;
+			break;
+		}
+	
+	}
 
-	for (int i = 0; i < Settings.FilesToInclude.Size; i++)
+	for (int i = 0; i < STR_BUF_SIZE; i++)
 	{
 		char* FileSugested = Settings.FilesToInclude.Strings[i];
+		if (!FileSugested) continue;
 		char TempSugestedName[1024];
 		char TempFileName[1024];
 		strcpy_s(TempSugestedName, FileSugested);
@@ -178,7 +189,7 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 		}
 		else if (preWildCardIndex == 0)
 		{
-			if (FindString(LoweredTempFile, TempSugestedName + 1) >= 0)
+			if (EndsWith(LoweredTempFile, TempSugestedName + 1))
 			{
 				ShouldProcess = true;
 				break;
@@ -249,9 +260,10 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 	}
 	if (ShouldProcess)
 	{
+		FilesMutex.lock();
 		Files.push_back({ fileName, filePath, fileSize });
+		FilesMutex.unlock();
 	}
-	SettingsMutex.unlock();
 }
 
 
