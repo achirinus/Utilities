@@ -33,6 +33,7 @@ void AddString(StringBuffer* buf, char* str)
 		if (!Temp)
 		{
 			Temp = StringCopy(str);
+			buf->Size++;
 			break;
 		}
 	}
@@ -46,6 +47,7 @@ void RemoveString(StringBuffer* buf, char* str)
 		{
 			delete[] Temp;
 			Temp = 0;
+			buf->Size--;
 		}
 	}
 }

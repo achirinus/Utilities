@@ -32,6 +32,8 @@ void SearchFilesRange(FilesIndexRange range)
 			char temp[MAX_LINE_BUFFER_LENGTH + 1];
 			int count = StringSize(Line);
 
+			OutputMutex.lock();
+
 			if (count <= Settings.OutputLineLength)
 			{
 				strncpy_s(temp, Line, count);
@@ -90,6 +92,8 @@ void SearchFilesRange(FilesIndexRange range)
 					strncpy_s(temp, tempStr.c_str(), tempStr.size() + 1);
 				}
 			}
+
+			OutputMutex.unlock();
 
 			if (char* BeginOfSearchString = strstr(temp, Settings.SearchTerm))
 			{
@@ -165,7 +169,6 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 			ShouldProcess = false;
 			break;
 		}
-	
 	}
 
 	for (int i = 0; i < STR_BUF_SIZE; i++)

@@ -12,7 +12,6 @@
 #define WINDOW_TITLE "FileSearch"
 
 char StartingWorkingDir[MAX_PATH];
-char FileNames[10][MAX_PATH];
 char FileNameRegex[128];
 
 std::vector<FileData> Files;
@@ -23,6 +22,7 @@ HANDLE Console;
 ProgramSettings Settings;
 
 std::thread FindFilesThread;
+std::thread SearchFilesThread;
 
 int WindowWidth = 1280;
 int WindowHeight = 720;
@@ -115,6 +115,7 @@ int main(int argc, char* argv[])
 				}
 				ImGui::EndMenuBar();
 			}
+			ImGui::Separator();
 
 			ImGui::BeginChild("Search Input", { (float)(WindowWidth / 2), (float)(WindowHeight / 100 * 30) }, false, ImGuiWindowFlags_NoDecoration);
 
@@ -123,10 +124,14 @@ int main(int argc, char* argv[])
 			ImGui::SetNextItemWidth((float)(WindowWidth / 100 * 40));
 			ImGui::InputText("##Search path", Settings.SearchDirectory, sizeof(Settings.SearchDirectory), ImGuiInputTextFlags_CallbackCompletion, ImGui_SearchPathCallback);
 
+			ImGui::Separator();
+
 			ImGui::Text("Search term:");
 			ImGui::SameLine();
 			ImGui::SetNextItemWidth((float)(WindowWidth / 100 * 40));
 			ImGui::InputText("##Search term", Settings.SearchTerm, sizeof(Settings.SearchTerm), ImGuiInputTextFlags_None);
+
+			ImGui::Separator();
 
 			ImGui::Text("File name:");
 			ImGui::SameLine();
@@ -147,8 +152,27 @@ int main(int argc, char* argv[])
 			ImGui::Text("Eligible files found: %d", Files.size());
 			FilesMutex.unlock();
 
+			ImGui::Separator();
+
+			OutputMutex.lock();
+			ImGui::InputInt("Max line chars", &Settings.OutputLineLength, 32);
+			OutputMutex.unlock();
+
+			if (ImGui::Button("Search!"))
+			{
+				FilesMutex.lock();
+				int NumOfFiles = Files.size();
+				FilesMutex.unlock();
+				if ((StringSize(Settings.SearchTerm) > 0) && (NumOfFiles))
+				{
+					SearchFilesThread = std::thread(SearchFiles);
+				}
+			}
+
 			ImGui::EndChild();
+			
 			ImGui::SameLine();
+
 			ImGui::BeginChild("Search List", { (float)(WindowWidth / 2), (float)(WindowHeight / 100 * 30) }, false, ImGuiWindowFlags_NoDecoration);
 			
 			for (int i = 0; i < STR_BUF_SIZE; i++)
@@ -162,11 +186,10 @@ int main(int argc, char* argv[])
 					}
 				}
 			}
-			
 			ImGui::EndChild();
 
 			ImGui::Separator();
-
+			
 			ImGui::BeginChild("Results", { (float)WindowWidth, (float)(WindowHeight * 0.7f) });
 			for (auto it = SearchResults.begin(); it != SearchResults.end(); ++it)
 			{
@@ -216,6 +239,10 @@ int main(int argc, char* argv[])
 	if (FindFilesThread.joinable())
 	{
 		FindFilesThread.join();
+	}
+	if (SearchFilesThread.joinable())
+	{
+		SearchFilesThread.join();
 	}
 	return 0;
 }
