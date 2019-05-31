@@ -27,6 +27,17 @@ std::thread SearchFilesThread;
 int WindowWidth = 1280;
 int WindowHeight = 720;
 
+void StartFindingFiles()
+{
+	if (FindFilesThread.joinable())
+	{
+		FindFilesThread.detach();
+		FindFilesThread.~thread();
+	}
+	Files.clear();
+	FindFilesThread = std::thread(FindAllFiles);
+}
+
 void glfw_err(int err, const char* desc)
 {
 	printf("GLFW err code: %d : %s", err, desc);
@@ -40,8 +51,7 @@ void glfw_resize(GLFWwindow* window, int width, int height)
 
 int ImGui_SearchPathCallback(ImGuiInputTextCallbackData *data)
 {
-	Files.clear();
-	FindFilesThread = std::thread(FindAllFiles);
+	StartFindingFiles();
 	return 1;
 }
 
@@ -117,7 +127,10 @@ int main(int argc, char* argv[])
 			}
 			ImGui::Separator();
 
-			ImGui::BeginChild("Search Input", { (float)(WindowWidth / 2), (float)(WindowHeight / 100 * 30) }, false, ImGuiWindowFlags_NoDecoration);
+			float TopChildWidth = (float)(WindowWidth / 2);
+			float TopChildHeight = (float)(WindowHeight / 100 * 30);
+
+			ImGui::BeginChild("Search Input", {TopChildWidth , TopChildHeight}, false, ImGuiWindowFlags_NoDecoration);
 
 			ImGui::Text("Search path:");
 			ImGui::SameLine();
@@ -144,6 +157,10 @@ int main(int argc, char* argv[])
 				{
 					AddString(&Settings.FilesToInclude, FileNameRegex);
 					ClearString(FileNameRegex);
+					if (StringSize(Settings.SearchDirectory) > 0)
+					{
+						StartFindingFiles();
+					}
 				}
 			}
 			
@@ -155,7 +172,16 @@ int main(int argc, char* argv[])
 			ImGui::Separator();
 
 			OutputMutex.lock();
+			ImGui::SetNextItemWidth(TopChildWidth * 0.2f);
 			ImGui::InputInt("Max line chars", &Settings.OutputLineLength, 32);
+
+			ImGui::Separator();
+
+			float NumOfThreadsWidth = TopChildWidth * 0.15f;
+			NumOfThreadsWidth = ClampMin(NumOfThreadsWidth, 50.f);
+			ImGui::SetNextItemWidth(NumOfThreadsWidth);
+			ImGui::InputInt("Number of threads", &Settings.NumberOfThreads);
+
 			OutputMutex.unlock();
 
 			if (ImGui::Button("Search!"))
@@ -173,8 +199,9 @@ int main(int argc, char* argv[])
 			
 			ImGui::SameLine();
 
-			ImGui::BeginChild("Search List", { (float)(WindowWidth / 2), (float)(WindowHeight / 100 * 30) }, false, ImGuiWindowFlags_NoDecoration);
-			
+			ImGui::BeginChild("Search List", {TopChildWidth, TopChildHeight}, false, ImGuiWindowFlags_NoDecoration);
+
+			OutputMutex.lock();
 			for (int i = 0; i < STR_BUF_SIZE; i++)
 			{
 				char* Temp = Settings.FilesToInclude.Strings[i];
@@ -183,9 +210,12 @@ int main(int argc, char* argv[])
 					if (ImGui::Button(Temp))
 					{
 						RemoveString(&Settings.FilesToInclude, Temp);
+						StartFindingFiles();
 					}
 				}
 			}
+			OutputMutex.unlock();
+
 			ImGui::EndChild();
 
 			ImGui::Separator();
@@ -238,11 +268,11 @@ int main(int argc, char* argv[])
 
 	if (FindFilesThread.joinable())
 	{
-		FindFilesThread.join();
+		FindFilesThread.detach();
 	}
 	if (SearchFilesThread.joinable())
 	{
-		SearchFilesThread.join();
+		SearchFilesThread.detach();
 	}
 	return 0;
 }

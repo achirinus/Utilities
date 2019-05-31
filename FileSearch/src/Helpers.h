@@ -93,3 +93,12 @@ char* GetExePath();
 int GetIntValue(char* source, char* var);
 bool GetBoolValueWithOptions(char* source, char* var, char* trueOpt, char* falseOpt);
 bool GetBoolValue(char* source, char* var);
+
+template<typename T>
+T ClampMin(T val, T lowerBound)
+{
+	T Result = val;
+	if (Result < lowerBound) Result = lowerBound;
+	return Result;
+}
+
