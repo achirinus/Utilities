@@ -2,6 +2,7 @@
 #include "Helpers.h"
 #include <thread>
 #include <mutex>
+#include "Allocator.h"
 
 #define FILES_PER_THREAD 20
 
@@ -19,7 +20,7 @@ int main(int argc, char* argv[])
 {
 	ReadProgramProperties(argv, argc);
 #ifdef _DEBUG
-	strcpy(StartingWorkingDir, "E:\\workspace\\InstantWar\\AndroidUpdate4\\externals\\engine");
+	strcpy(StartingWorkingDir, "D:\\workspace");
 	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
@@ -29,9 +30,9 @@ int main(int argc, char* argv[])
 
 	Console = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	int index = FindString("\\Source\\RestLib\\CMakeLists.txt(20): elseif (ANDROID)", "ANDROID");
 
 	BeginCounter();
+	printf("Gathering files...\n");
 	FindAllFiles();
 	int GetFilesDuration = EndCounter();
 
@@ -41,11 +42,13 @@ int main(int argc, char* argv[])
 	BeginCounter();
 	int NumOfFiles = Files.size();
 
+	printf("Searching in files...\n");
 	if ((NumOfFiles > 20) && Settings.NumberOfThreads)
 	{
 		int NumOfFilesPerThread = NumOfFiles / Settings.NumberOfThreads;
 		int Remaining = NumOfFiles % Settings.NumberOfThreads;
 		FilesIndexRange* Ranges = new FilesIndexRange[Settings.NumberOfThreads];
+
 		int StartIndex = 0;
 		for (int i = 0; i < Settings.NumberOfThreads; i++)
 		{
@@ -61,9 +64,10 @@ int main(int argc, char* argv[])
 		
 		for (int i = 0; i < Settings.NumberOfThreads; i++)
 		{
+			
 			Threads.push_back(std::thread{ SearchFilesRange, Ranges[i] });
 		}
-		for (int i = 0; i < Threads.size(); i++)
+		for (size_t i = 0; i < Threads.size(); i++)
 		{
 			Threads[i].join();
 		}
@@ -82,6 +86,11 @@ int main(int argc, char* argv[])
 
 void SearchFilesRange(FilesIndexRange range)
 {
+	Allocator::Arena LineArena;
+	Allocator::AllocateArena(&LineArena, 1000000);
+
+	Allocator::Arena ContentArena;
+	Allocator::AllocateArena(&ContentArena, 5000000);
 	for (int i = range.Begin; i<= range.End; i++)
 	{
 		FileData& names = Files[i];
@@ -89,7 +98,7 @@ void SearchFilesRange(FilesIndexRange range)
 		fopen_s(&pFile, names.AbsPath, "rb");
 		if (pFile == nullptr) continue;
 		if (names.Size == 0) continue;
-		char* Contents = new char[names.Size + 1];
+		char* Contents = Allocator::ReallocateArena(&ContentArena, names.Size + 1);
 
 		char* TempCont = Contents;
 		fread(Contents, 1, names.Size, pFile);
@@ -100,8 +109,7 @@ void SearchFilesRange(FilesIndexRange range)
 		
 		do
 		{
-			char TempLine[MAX_LINE_BUFFER_LENGTH];
-			char* Line = ReadStringLine(&TempCont, TempLine);
+			char* Line = ReadStringLine(&TempCont, &LineArena);
 			char temp[MAX_LINE_BUFFER_LENGTH];
 			int count = StringSize(Line);
 
@@ -198,15 +206,15 @@ void SearchFilesRange(FilesIndexRange range)
 				OutputMutex.unlock();
 			}
 			LineNumber++;
-			
-			Line = ReadStringLine(&TempCont);
 		}
 		while (TempCont);
 		
-
-		delete[] Contents;
+		Allocator::ResetArena(&LineArena);
+		Allocator::ResetArena(&ContentArena);
 		fclose(pFile);
 	}
+	Allocator::ClearArena(&LineArena);
+	Allocator::ClearArena(&ContentArena);
 }
 
 void SearchFiles()
@@ -307,7 +315,11 @@ void FindInDirectory(char* Dir)
 		}
 		else
 		{
-			ProcessFile(StringCopy(CurrentFileData.cFileName), StringCopy(filePath), CurrentFileData.nFileSizeLow);
+			if (CurrentFileData.nFileSizeLow < 5000000)
+			{
+				//TODO(Alin) StringCopy should be in a pool for faster times
+				ProcessFile(StringCopy(CurrentFileData.cFileName), StringCopy(filePath), CurrentFileData.nFileSizeLow);
+			}
 		}
 	}
 	delete[] currentDir;
@@ -359,8 +371,7 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 		}
 		else if (postWildCardIndex > 0)
 		{
-			char TempMem[MAX_LINE_BUFFER_LENGTH];
-			char* beforeWildCard = Substring(TempSugestedName, TempMem, 0, StringSize(TempSugestedName) - 1);
+			char* beforeWildCard = Substring(TempSugestedName, nullptr, 0, StringSize(TempSugestedName) - 1);
 			int foundIndex = FindString(LoweredTempFile, beforeWildCard);
 			if (foundIndex >= 0)
 			{
@@ -402,8 +413,7 @@ void ProcessFile(char* fileName, char* filePath, unsigned fileSize)
 		}
 		else if (postWildCardIndex > 0)
 		{
-			char TempMem[MAX_LINE_BUFFER_LENGTH];
-			char* beforeWildCard = Substring(TempSugestedName, TempMem, 0, StringSize(TempSugestedName) - 1);
+			char* beforeWildCard = Substring(TempSugestedName, nullptr, 0, StringSize(TempSugestedName) - 1);
 			int foundIndex = FindString(LoweredTempFile, beforeWildCard);
 			if (foundIndex >= 0)
 			{

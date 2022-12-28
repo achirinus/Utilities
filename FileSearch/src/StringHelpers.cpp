@@ -1,27 +1,6 @@
 
 #include "StringHelpers.h"
-
-StringPool Pool;
-
-int PoolFreeSpace(StringPool* Pool)
-{
-	return (Pool->Size - Pool->Cursor);
-}
-
-CStr AllocString(int Size)
-{
-	CStr Result = {};
-
-	
-
-	return Result;
-}
-
-void FreeString(CStr Str)
-{
-
-}
-
+#include "Allocator.h"
 
 char ToLower(char c)
 {
@@ -55,7 +34,7 @@ bool BeginsWith(const char* str, const char* with)
 	return FindString(str, with) == 0;
 }
 
-char* Substring(char* source, char* dest, int startPos, int count)
+char* Substring(char* source, Allocator::Arena* pArena, int startPos, int count)
 {
 	char* result = 0;
 	int sourceLen = StringSize(source);
@@ -63,9 +42,9 @@ char* Substring(char* source, char* dest, int startPos, int count)
 	//if (count == 0) count = sourceLen - startPos;
 	if (sourceLen < (startPos + count)) count = sourceLen - startPos;
 
-	if (dest)
+	if (pArena)
 	{
-		result = dest;
+		result = Allocator::PushSize(pArena, (count - startPos) + 1);
 	}
 	else
 	{
@@ -303,7 +282,7 @@ StringBuffer BreakStringByToken(char* str, char token)
 }
 
 
-char* ReadStringLine(char** str, char* mem)
+char* ReadStringLine(char** str, Allocator::Arena* pArena)
 {
 	if (!str) return 0;
 	if (!*str)return 0;
@@ -331,7 +310,7 @@ char* ReadStringLine(char** str, char* mem)
 		}
 	}
 	char* result = 0;
-	result = Substring(tempStr, mem, 0, finalIndex);
+	result = Substring(tempStr, pArena, 0, finalIndex);
 	return result;
 }
 
