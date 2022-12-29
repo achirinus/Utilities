@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 {
 	ReadProgramProperties(argv, argc);
 #ifdef _DEBUG
-	strcpy(StartingWorkingDir, "D:\\workspace");
+	strcpy(StartingWorkingDir, "D:\\workspace\\Downloaded");
 	SetCurrentDirectoryA(StartingWorkingDir);
 #else
 	if (argc < 2) return 1;
@@ -299,7 +299,7 @@ void FindInDirectory(char* Dir)
 
 	char* findDir = StringConcat(currentDir, "*");
 	WIN32_FIND_DATA CurrentFileData;
-	HANDLE FindHandle = FindFirstFile(findDir, &CurrentFileData);
+	HANDLE FindHandle = FindFirstFileEx(findDir, FindExInfoBasic, &CurrentFileData, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
 	while (FindNextFile(FindHandle, &CurrentFileData))
 	{
 		if ((CurrentFileData.cFileName[0] == '.') && (CurrentFileData.cFileName[1] == '.'))
